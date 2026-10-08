@@ -617,30 +617,45 @@
         let myCategoryChart = null;
 
         async function initSystem() {
-            const syncEl = document.getElementById('syncStatus');
-            try {
-                syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Laden...';
-                
-                // Fetch data from Supabase table 'app_data'
-                const { data, error } = await supabaseClient
-                    .from('app_data')
-                    .select('*')
-                    .limit(1);
+    const syncEl = document.getElementById('syncStatus');
+    try {
+        syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Laden...';
+        
+        // Haal altijd specifiek rij met id 1 op
+        const { data, error } = await supabaseClient
+            .from('app_data')
+            .select('*')
+            .eq('id', 1)
+            .maybeSingle();
 
-                if (error) throw error;
+        if (error) throw error;
 
-                if (data && data.length > 0 && data[0].payload) {
-                    appData = { ...appData, ...data[0].payload };
-                } else {
-                    // If table row is empty, seed it for the first time
-                    await supabaseClient.from('app_data').insert([{ payload: appData }]);
-                }
+        if (data && data.payload) {
+            appData = { ...appData, ...data.payload };
+        } else {
+            // Als rij 1 om een reden mist, voeg hem toe
+            await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
+        }
 
-                syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
-            } catch (e) {
-                console.error("Failed loading data from Supabase:", e);
-                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
-            }
+        syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
+    } catch (e) {
+        console.error("Failed loading data from Supabase:", e);
+        syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
+    }
+
+    // Ensure current year is in list
+    const currentYear = new Date().getFullYear();
+    if (!appData.settings.years.includes(currentYear)) {
+        appData.settings.years.push(currentYear);
+        appData.settings.years.sort();
+    }
+    if (!appData.activeYear) {
+        appData.activeYear = currentYear;
+    }
+
+    populateYearDropdowns();
+    refreshDashboard();
+}
 
             // Ensure current year is in list
             const currentYear = new Date().getFullYear();
