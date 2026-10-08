@@ -656,20 +656,6 @@
             refreshDashboard();
         }
 
-            // Ensure current year is in list
-            const currentYear = new Date().getFullYear();
-            if (!appData.settings.years.includes(currentYear)) {
-                appData.settings.years.push(currentYear);
-                appData.settings.years.sort();
-            }
-            if (!appData.activeYear) {
-                appData.activeYear = currentYear;
-            }
-
-            populateYearDropdowns();
-            refreshDashboard();
-        }
-
         async function saveData() {
             const syncEl = document.getElementById('syncStatus');
             syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
