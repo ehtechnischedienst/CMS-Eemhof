@@ -621,19 +621,20 @@
             try {
                 syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Laden...';
                 
-                // Fetch data from Supabase table 'app_data'
+                // Haal specifiek rij met id 1 op
                 const { data, error } = await supabaseClient
                     .from('app_data')
                     .select('*')
-                    .limit(1);
+                    .eq('id', 1)
+                    .maybeSingle();
 
                 if (error) throw error;
 
-                if (data && data.length > 0 && data[0].payload) {
-                    appData = { ...appData, ...data[0].payload };
+                if (data && data.payload) {
+                    appData = { ...appData, ...data.payload };
                 } else {
-                    // If table row is empty, seed it for the first time
-                    await supabaseClient.from('app_data').insert([{ payload: appData }]);
+                    // Als rij 1 mist, voeg hem toe
+                    await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
                 }
 
                 syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
@@ -658,25 +659,31 @@
 
         async function saveData() {
             const syncEl = document.getElementById('syncStatus');
-            syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
+            if (syncEl) {
+                syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
+            }
             
             try {
-                // Upsert to row ID 1 or update the existing row
                 const { error } = await supabaseClient
                     .from('app_data')
                     .upsert({ id: 1, payload: appData });
 
                 if (error) throw error;
-                syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
+                if (syncEl) {
+                    syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
+                }
             } catch (e) {
                 console.error("Failed saving data to Supabase:", e);
-                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Opslaan mislukt';
+                if (syncEl) {
+                    syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Opslaan mislukt';
+                }
                 alert('Fout bij opslaan in de cloud. Controleer je internetverbinding.');
             }
         }
 
         function populateYearDropdowns() {
             const select = document.getElementById('globalYearSelect');
+            if (!select) return;
             select.innerHTML = '';
             appData.settings.years.forEach(yr => {
                 const opt = document.createElement('option');
@@ -686,7 +693,6 @@
                 select.appendChild(opt);
             });
 
-            // Update UI year labels
             document.querySelectorAll('.lbl-year').forEach(el => el.textContent = appData.activeYear);
         }
 
@@ -697,11 +703,6 @@
             refreshDashboard();
         }
 
-        /**
-         * CALCULATE YEARLY COSTS WITH 9/12 LOGIC
-         * - Boekjaar: 100% of costs assigned to current year.
-         * - Kalenderjaar: 75% (9/12) assigned to current year, 25% (3/12) carried forward to next year.
-         */
         function calculateCompanyYearlyCosts(company, year) {
             let totalContractCost = 0;
             let totalExtraCost = 0;
@@ -709,17 +710,15 @@
             const targetYear = parseInt(year, 10);
             const prevYear = targetYear - 1;
 
-            // 1. Current Year Contract Cost Contribution
             if (company.yearlyData && company.yearlyData[targetYear]) {
                 const cur = company.yearlyData[targetYear];
                 const rawAmt = parseFloat(cur.contractAmount) || 0;
                 if (cur.yearType === 'Kalenderjaar') {
                     totalContractCost += rawAmt * (9 / 12);
                 } else {
-                    totalContractCost += rawAmt; // Boekjaar = 100%
+                    totalContractCost += rawAmt;
                 }
 
-                // Add Extra Costs for current year (100%)
                 if (Array.isArray(cur.extraCosts)) {
                     cur.extraCosts.forEach(ex => {
                         totalExtraCost += parseFloat(ex.amount) || 0;
@@ -727,7 +726,6 @@
                 }
             }
 
-            // 2. Previous Year Carry-over for Kalenderjaar (3/12)
             if (company.yearlyData && company.yearlyData[prevYear]) {
                 const prev = company.yearlyData[prevYear];
                 const prevAmt = parseFloat(prev.contractAmount) || 0;
@@ -762,7 +760,6 @@
                     activeCount++;
                 }
 
-                // Include active companies in costs
                 if (comp.active !== false) {
                     const costs = calculateCompanyYearlyCosts(comp, curYear);
                     totalContractCosts += costs.contractCost;
@@ -776,7 +773,6 @@
             const totalCosts = totalContractCosts + totalExtraCosts;
             const remainingBudget = budget - totalCosts;
 
-            // Update KPI Cards UI
             document.getElementById('kpiBudget').textContent = formatCurrency(budget);
             document.getElementById('kpiCosts').textContent = formatCurrency(totalCosts);
             document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(totalContractCosts)} | Extra: ${formatCurrency(totalExtraCosts)}`;
@@ -807,6 +803,7 @@
         function populateCategoryFilterDropdowns() {
             const chartFilter = document.getElementById('chartCategoryFilter');
             const tableFilter = document.getElementById('filterCategory');
+            if (!chartFilter || !tableFilter) return;
 
             const curChartVal = chartFilter.value;
             const curTableVal = tableFilter.value;
@@ -889,6 +886,7 @@
 
         function renderCompanyTable() {
             const tbody = document.getElementById('companyTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
             const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
@@ -898,15 +896,12 @@
             const curYear = appData.activeYear;
 
             const filteredCompanies = appData.companies.filter(comp => {
-                // Search filter
                 const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
                 const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
                 if (!nameMatch && !descMatch) return false;
 
-                // Category filter
                 if (catVal !== 'ALL' && comp.category !== catVal) return false;
 
-                // Status filter
                 if (statusVal === 'ACTIVE' && comp.active === false) return false;
                 if (statusVal === 'INACTIVE' && comp.active !== false) return false;
 
@@ -934,7 +929,6 @@
                 const yearType = yearInfo.yearType || 'Boekjaar';
                 const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
 
-                // Main Row
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-slate-50 transition-colors ${comp.active === false ? 'opacity-50 bg-slate-50' : ''}`;
                 tr.innerHTML = `
@@ -960,7 +954,6 @@
                 `;
                 tbody.appendChild(tr);
 
-                // Sub-Row for Extra Costs if present
                 if (hasExtra) {
                     const subTr = document.createElement('tr');
                     subTr.id = `extra-row-${comp.id}`;
@@ -1050,11 +1043,12 @@
 
         function openCompanyModal(companyId = null) {
             const form = document.getElementById('companyForm');
+            if (!form) return;
             form.reset();
 
             populateDropdownOptions();
 
-            const isEditMode = !companyId; // New companies start directly in edit mode
+            const isEditMode = !companyId;
             setCompanyModalEditState(isEditMode);
 
             if (companyId) {
@@ -1094,8 +1088,10 @@
 
         function closeCompanyModal() {
             const modal = document.getElementById('companyModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
         }
 
         function setCompanyModalEditState(isEditing) {
@@ -1126,6 +1122,7 @@
             const catSel = document.getElementById('inpCompCategory');
             const deptSel = document.getElementById('inpCompDepartment');
             const typeSel = document.getElementById('inpCompContractType');
+            if (!catSel || !deptSel || !typeSel) return;
 
             catSel.innerHTML = appData.settings.categories.map(c => `<option value="${c}">${c}</option>`).join('');
             deptSel.innerHTML = appData.settings.departments.map(d => `<option value="${d}">${d}</option>`).join('');
@@ -1134,6 +1131,7 @@
 
         function renderYearlyBreakdownCards(yearlyData) {
             const container = document.getElementById('yearlyBreakdownContainer');
+            if (!container) return;
             container.innerHTML = '';
 
             appData.settings.years.forEach(yr => {
@@ -1176,7 +1174,6 @@
                         </div>
                     </div>
 
-                    <!-- Extra Costs for this year -->
                     <div class="bg-white/80 p-3 rounded-lg border border-slate-200/60">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-[11px] font-bold text-slate-700">Extra Kosten Voor Jaar ${yr}</span>
@@ -1184,14 +1181,11 @@
                                 <i class="fa-solid fa-plus text-[10px]"></i> Regel Toevoegen
                             </button>
                         </div>
-                        <div id="extra-costs-list-${yr}" class="space-y-2">
-                            <!-- Dynamic Extra Cost Rows -->
-                        </div>
+                        <div id="extra-costs-list-${yr}" class="space-y-2"></div>
                     </div>
                 `;
                 container.appendChild(card);
 
-                // Render existing extra cost lines
                 if (Array.isArray(yrData.extraCosts)) {
                     yrData.extraCosts.forEach(ex => addExtraCostLine(yr, ex));
                 }
@@ -1245,8 +1239,8 @@
             `;
             container.appendChild(row);
 
-            // Inherit current disabled state
-            const isEditing = !document.getElementById('btnSaveCompany').classList.contains('hidden');
+            const btnSave = document.getElementById('btnSaveCompany');
+            const isEditing = btnSave && !btnSave.classList.contains('hidden');
             row.querySelectorAll('.inp-editable').forEach(inp => inp.disabled = !isEditing);
         }
 
@@ -1261,7 +1255,6 @@
                 return;
             }
 
-            // Check duplicate name for new companies
             if (!compId) {
                 const exists = appData.companies.some(c => c.name.toLowerCase() === name.toLowerCase());
                 if (exists) {
@@ -1270,7 +1263,6 @@
                 }
             }
 
-            // Read yearly data
             const yearlyData = {};
             appData.settings.years.forEach(yr => {
                 const verified = document.getElementById(`yr-verified-${yr}`)?.checked || false;
@@ -1339,14 +1331,18 @@
             renderBudgetSettingsTable();
 
             const modal = document.getElementById('settingsModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
         }
 
         function closeSettingsModal() {
             const modal = document.getElementById('settingsModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
             saveData();
             populateYearDropdowns();
             refreshDashboard();
@@ -1354,6 +1350,7 @@
 
         function renderListOptionTags(key, containerId) {
             const container = document.getElementById(containerId);
+            if (!container) return;
             container.innerHTML = '';
             appData.settings[key].forEach(opt => {
                 const tag = document.createElement('span');
@@ -1370,6 +1367,7 @@
 
         function addListOption(key, inputId) {
             const input = document.getElementById(inputId);
+            if (!input) return;
             const val = input.value.trim();
             if (!val) return;
 
@@ -1387,6 +1385,7 @@
 
         function renderBudgetSettingsTable() {
             const tbody = document.getElementById('budgetSettingsTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
             appData.settings.years.forEach(yr => {
@@ -1414,6 +1413,7 @@
         function addNewYearSetting() {
             const yrInput = document.getElementById('newYearInput');
             const budgetInput = document.getElementById('newYearBudgetInput');
+            if (!yrInput || !budgetInput) return;
 
             const yr = parseInt(yrInput.value, 10);
             const budget = parseFloat(budgetInput.value) || 0;
@@ -1440,14 +1440,18 @@
 
         function openReportModal() {
             const modal = document.getElementById('reportModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
         }
 
         function closeReportModal() {
             const modal = document.getElementById('reportModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
         }
 
         function exportToExcel() {
@@ -1523,11 +1527,10 @@
                         const name = row['Bedrijfsnaam'] || row['bedrijfsnaam'] || row['Name'] || row['name'];
                         if (!name) return;
 
-                        // Check duplicate company name
                         const exists = appData.companies.some(c => c.name.trim().toLowerCase() === String(name).trim().toLowerCase());
                         if (exists) {
                             skippedCount++;
-                            return; // Skip duplicate
+                            return;
                         }
 
                         const contractAmt = parseFloat(row['Contractbedrag'] || row['bedrag'] || row['Amount']) || 0;
@@ -1575,7 +1578,7 @@
                 }
             };
             reader.readAsArrayBuffer(file);
-            event.target.value = ''; // Reset file input
+            event.target.value = '';
         }
 
         function escapeHtml(str) {
@@ -1592,7 +1595,6 @@
             return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
         }
 
-        // Initialize Application
         window.addEventListener('DOMContentLoaded', () => {
             initSystem();
         });
