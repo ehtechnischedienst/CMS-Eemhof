@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="nl" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Management Systeem</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (XLSX) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .year-card-verified {
+            background-color: #f0fdf4 !important;
+            border-color: #86efac !important;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 bg-slate-100">
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-500 p-2 rounded-xl text-white">
+                        <i class="fa-solid fa-file-signature text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight">Contract Management</h1>
+                        <p class="text-xs text-slate-400">Bedrijfscontracten &amp; Budgetbeheer (Cloud)</p>
+                    </div>
+                </div>
+
+                <!-- Global Controls -->
+                <div class="flex items-center space-x-3">
+                    <!-- Sync Indicator -->
+                    <span id="syncStatus" class="text-[11px] text-emerald-400 hidden sm:inline-block bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                        <i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden
+                    </span>
+
+                    <!-- Year Picker -->
+                    <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                        <i class="fa-solid fa-calendar-days text-brand-500 text-sm"></i>
+                        <span class="text-xs text-slate-400 font-medium">Actief Jaar:</span>
+                        <select id="globalYearSelect" onchange="changeActiveYear(this.value)" class="bg-transparent text-white text-sm font-bold focus:outline-none cursor-pointer">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <button onclick="openCompanyModal()" class="bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl shadow transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Nieuw Bedrijf</span>
+                    </button>
+
+                    <button onclick="openSettingsModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-medium px-3 py-2 rounded-xl border border-slate-700 transition-all flex items-center space-x-1.5" title="Beheer & Instellingen">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span class="hidden sm:inline">Beheer</span>
+                    </button>
+
+                    <button onclick="openReportModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-medium px-3 py-2 rounded-xl border border-slate-700 transition-all flex items-center space-x-1.5" title="Rapportage & Export">
+                        <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                        <span class="hidden sm:inline">Export</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Budget Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Budget (<span class="lbl-year">2026</span>)</span>
+                    <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="kpiBudget" class="text-2xl font-bold text-slate-900">€ 0,00</div>
+                    <p class="text-xs text-slate-400 mt-1">Ingesteld via Beheer</p>
+                </div>
+            </div>
+
+            <!-- Total Costs Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Totale Kosten (<span class="lbl-year">2026</span>)</span>
+                    <div class="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="kpiCosts" class="text-2xl font-bold text-slate-900">€ 0,00</div>
+                    <p id="kpiCostsSub" class="text-xs text-slate-500 mt-1">Contract: € 0 | Extra: € 0</p>
+                </div>
+            </div>
+
+            <!-- Remaining Budget Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resterend Budget</span>
+                    <div id="kpiRemainingIcon" class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i class="fa-solid fa-piggy-bank"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="kpiRemaining" class="text-2xl font-bold text-emerald-600">€ 0,00</div>
+                    <p id="kpiRemainingPct" class="text-xs text-slate-500 mt-1">0% van budget over</p>
+                </div>
+            </div>
+
+            <!-- Active Companies Counter -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Bedrijven In Systeem</span>
+                    <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <i class="fa-solid fa-building"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="kpiCompaniesCount" class="text-2xl font-bold text-slate-900">0</div>
+                    <p id="kpiActiveCompaniesSub" class="text-xs text-slate-500 mt-1">0 Actief / 0 Inactief</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart & Analytics Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Category Donut Chart -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-1 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-brand-500"></i>
+                            Kosten per Categorie
+                        </h2>
+                        <select id="chartCategoryFilter" onchange="renderChart()" class="text-xs bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 font-medium focus:outline-none">
+                            <option value="ALL">Alle Categorieën</option>
+                        </select>
+                    </div>
+                    <div class="relative w-full h-56 flex items-center justify-center">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="text-center text-xs text-slate-400 mt-2">
+                    Inclusief 9/12 pro-rata kalenderjaar verdeling voor <span class="lbl-year font-semibold">2026</span>
+                </div>
+            </div>
+
+            <!-- Live Selection Summary & Controls -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-2 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-filter text-brand-500"></i>
+                                Filters &amp; Multi-selectie Rekenmachine
+                            </h2>
+                            <p class="text-xs text-slate-500">Selecteer bedrijven in de tabel hieronder om de gecombineerde kosten live op te tellen.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="selectAllCompanies(true)" class="text-xs font-semibold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors">
+                                Selecteer Alles
+                            </button>
+                            <button onclick="selectAllCompanies(false)" class="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
+                                Demarkeer Alles
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search & Filters -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Zoek Bedrijf / Omschrijving</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                <input type="text" id="filterSearch" oninput="renderCompanyTable()" placeholder="Typ om te zoeken..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Contract Categorie</label>
+                            <select id="filterCategory" onchange="renderCompanyTable()" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                <option value="ALL">Alle Categorieën</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Status Bedrijf</label>
+                            <select id="filterStatus" onchange="renderCompanyTable()" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                <option value="ALL">Alle Statussen</option>
+                                <option value="ACTIVE" selected>Alleen Actief</option>
+                                <option value="INACTIVE">Alleen Inactief</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selected Companies Total Counter Bar -->
+                <div class="p-4 bg-slate-900 text-white rounded-xl flex flex-wrap justify-between items-center gap-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-brand-500 p-2.5 rounded-lg text-white">
+                            <i class="fa-solid fa-calculator text-base"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 block font-medium">Geselecteerde Bedrijven (<span id="selectedCountText">0</span>)</span>
+                            <span class="text-xs text-slate-300">Som van alle aangevinkte rijen in <span class="lbl-year font-bold">2026</span></span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div id="selectedCostTotal" class="text-xl font-bold text-emerald-400">€ 0,00</div>
+                        <span id="selectedSubtext" class="text-xs text-slate-400">Contract: € 0 | Extra: € 0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Company Overview Table -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-brand-500"></i>
+                    Bedrijven &amp; Contracten Overzicht (<span class="lbl-year">2026</span>)
+                </h2>
+                <div class="text-xs text-slate-500">
+                    Klik op een bedrijfsnaam om details of kosten per jaar te bewerken
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
+                            <th class="p-3 w-10 text-center">
+                                <input type="checkbox" id="masterCheckbox" onchange="toggleMasterCheckbox(this.checked)" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                            </th>
+                            <th class="p-3">Bedrijfsnaam</th>
+                            <th class="p-3">Omschrijving Werkzaamheden</th>
+                            <th class="p-3">Categorie</th>
+                            <th class="p-3">Type Jaar</th>
+                            <th class="p-3 text-right">Kosten (<span class="lbl-year">2026</span>)</th>
+                            <th class="p-3">PO Nummer(s)</th>
+                            <th class="p-3 text-center">Extra Kosten</th>
+                        </tr>
+                    </thead>
+                    <tbody id="companyTableBody" class="divide-y divide-slate-100">
+                        <!-- Populated dynamically via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Company Detail / Edit Popup Modal -->
+    <div id="companyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden border border-slate-100 my-8">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-500 p-2 rounded-xl text-white">
+                        <i class="fa-solid fa-building"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalCompanyNameTitle" class="font-bold text-base">Nieuw Bedrijf Opvoeren</h3>
+                        <p class="text-xs text-slate-400">Bekijk, bewerk en beheer stamgegevens en jaarkosten</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="btnToggleEditMode" type="button" onclick="toggleEditMode()" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span id="btnToggleEditModeText">Bewerken</span>
+                    </button>
+                    <button type="button" onclick="closeCompanyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content Form -->
+            <form id="companyForm" onsubmit="saveCompanyData(event)" class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="editCompanyId">
+
+                <!-- Stamgegevens Section -->
+                <div>
+                    <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-brand-500"></i>
+                        Stamgegevens &amp; Contracteigenschappen
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Bedrijfsnaam *</label>
+                            <input type="text" id="inpCompName" required class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Status Bedrijf</label>
+                            <select id="inpCompActive" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                                <option value="true">Actief</option>
+                                <option value="false">Inactief</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Contract Naam</label>
+                            <input type="text" id="inpContractName" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Telefoonnummer</label>
+                            <input type="text" id="inpCompPhone" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">E-mailadres</label>
+                            <input type="email" id="inpCompEmail" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Organisatie / Naam</label>
+                            <input type="text" id="inpCompOrg" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Adresgegevens</label>
+                            <input type="text" id="inpCompAddress" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Omschrijving van de Werkzaamheden</label>
+                            <textarea id="inpCompDescription" rows="2" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Contract Categorie</label>
+                            <select id="inpCompCategory" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Afdeling</label>
+                            <select id="inpCompDepartment" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Soort Contract</label>
+                            <select id="inpCompContractType" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                                <!-- Dynamic -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Start Contractdatum</label>
+                            <input type="date" id="inpCompStartDate" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Duur Contract (maanden)</label>
+                            <input type="number" id="inpCompDuration" min="1" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Compulsory</label>
+                            <select id="inpCompCompulsory" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                                <option value="Nee">Nee</option>
+                                <option value="Ja">Ja</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yearly Breakdown Section -->
+                <div>
+                    <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3 flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-brand-500"></i>
+                            Kosten &amp; PO-nummers per Jaar (2023 - 2027+)
+                        </span>
+                        <span class="text-slate-400 text-[10px] font-normal lowercase">Vink het vakje aan om het jaar groen te markeren</span>
+                    </h4>
+
+                    <div id="yearlyBreakdownContainer" class="space-y-4">
+                        <!-- Dynamic Year Cards generated via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+                    <span class="text-xs text-slate-400">Bedrijven kunnen niet verwijderd worden (alleen op inactief gezet).</span>
+                    <div class="flex items-center space-x-2">
+                        <button type="button" onclick="closeCompanyModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors">
+                            Sluiten
+                        </button>
+                        <button id="btnSaveCompany" type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all shadow hidden">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> Opslaan
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings / Management Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden border border-slate-100 my-8">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-500 p-2 rounded-xl text-white">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">Beheer &amp; Instellingen</h3>
+                        <p class="text-xs text-slate-400">Beheer categorieën, afdelingen, contractsoorten, jaartallen en budgetten</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                <!-- Manage Contract Types -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-tags text-brand-500 mr-1.5"></i> Contractsoorten</span>
+                        <span class="text-[10px] text-slate-400 font-normal">bijv. Collecties, Park, Vervallen</span>
+                    </h4>
+                    <div class="flex gap-2">
+                        <input type="text" id="newContractTypeInput" placeholder="Nieuwe contractsoort naam..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
+                        <button onclick="addListOption('contractTypes', 'newContractTypeInput')" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Toevoegen</button>
+                    </div>
+                    <div id="listContractTypes" class="flex flex-wrap gap-2 pt-1">
+                        <!-- Dynamic Tags -->
+                    </div>
+                </div>
+
+                <!-- Manage Contract Categories -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-layer-group text-brand-500 mr-1.5"></i> Contract Categorieën</span>
+                        <span class="text-[10px] text-slate-400 font-normal">bijv. Fixed, Operations, Cleaning, Safety</span>
+                    </h4>
+                    <div class="flex gap-2">
+                        <input type="text" id="newCategoryInput" placeholder="Nieuwe categorie naam..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
+                        <button onclick="addListOption('categories', 'newCategoryInput')" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Toevoegen</button>
+                    </div>
+                    <div id="listCategories" class="flex flex-wrap gap-2 pt-1">
+                        <!-- Dynamic Tags -->
+                    </div>
+                </div>
+
+                <!-- Manage Departments -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-sitemap text-brand-500 mr-1.5"></i> Afdelingen</span>
+                        <span class="text-[10px] text-slate-400 font-normal">bijv. General, Technical, Green, Pool</span>
+                    </h4>
+                    <div class="flex gap-2">
+                        <input type="text" id="newDepartmentInput" placeholder="Nieuwe afdeling naam..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
+                        <button onclick="addListOption('departments', 'newDepartmentInput')" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Toevoegen</button>
+                    </div>
+                    <div id="listDepartments" class="flex flex-wrap gap-2 pt-1">
+                        <!-- Dynamic Tags -->
+                    </div>
+                </div>
+
+                <!-- Manage Years & Budgets -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        <i class="fa-solid fa-calendar-plus text-brand-500 mr-1.5"></i> Jaartallen &amp; Jaarbudgetten
+                    </h4>
+                    <div class="flex gap-2">
+                        <input type="number" id="newYearInput" placeholder="bijv. 2028" class="w-32 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
+                        <input type="number" id="newYearBudgetInput" placeholder="Budget bedrag (€)..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
+                        <button onclick="addNewYearSetting()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Jaar Toevoegen</button>
+                    </div>
+                    
+                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-100 font-semibold text-slate-600 border-b border-slate-200">
+                                <tr>
+                                    <th class="p-2">Jaartal</th>
+                                    <th class="p-2">Totaal Budget (€)</th>
+                                    <th class="p-2 text-right">Opslaan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="budgetSettingsTableBody" class="divide-y divide-slate-100">
+                                <!-- Dynamic -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-200/80 flex justify-end">
+                <button type="button" onclick="closeSettingsModal()" class="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors">
+                    Gereed
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export & Import Report Modal -->
+    <div id="reportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-100 my-8">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-emerald-500 p-2 rounded-xl text-white">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">Rapportage &amp; Excel Import/Export</h3>
+                        <p class="text-xs text-slate-400">Exporteer overzichten of importeer nieuwe bedrijven uit Excel</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeReportModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6">
+                <!-- Excel Export Section -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-download text-emerald-600"></i>
+                        Exporteer Huidig Overzicht
+                    </h4>
+                    <p class="text-xs text-slate-500">Download direct een XLSX spreadsheet van het actieve jaar <strong class="lbl-year">2026</strong> met contract- en extra kosten.</p>
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-2 shadow">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Download Excel Rapport (.xlsx)</span>
+                    </button>
+                </div>
+
+                <!-- Excel Import Section -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-file-import text-brand-600"></i>
+                        Bedrijven Importeren uit Excel / CSV
+                    </h4>
+                    <p class="text-xs text-slate-500">Download eerst het sjabloon, vul je gegevens in en upload het bestand. Dubbele bedrijven (op basis van bedrijfsnaam) worden automatisch overgeslagen.</p>
+                    
+                    <div class="flex flex-wrap gap-3 pt-1">
+                        <button onclick="downloadExcelTemplate()" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-circle-down text-brand-500"></i>
+                            <span>Voorbeeld Excel (.xlsx) Downloaden</span>
+                        </button>
+
+                        <label class="bg-brand-600 hover:bg-brand-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-2 shadow cursor-pointer">
+                            <i class="fa-solid fa-upload"></i>
+                            <span>Excel Uploaden &amp; Importeren</span>
+                            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importExcelFile(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-200/80 flex justify-end">
+                <button type="button" onclick="closeReportModal()" class="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors">
+                    Sluiten
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://xwnbuzxbrnltxfczatrl.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_5DLJrsERiTy8GYmjE4X1Zg_Qbk8XHRz';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Default Master Application State
+        let appData = {
+            activeYear: new Date().getFullYear(),
+            settings: {
+                years: [2023, 2024, 2025, 2026, 2027],
+                budgets: {
+                    2023: 100000,
+                    2024: 120000,
+                    2025: 150000,
+                    2026: 180000,
+                    2027: 200000
+                },
+                categories: ['Fixed', 'Fixed extra', 'Hygenic', 'OOP', 'Operations', 'Cleaning', 'Safety', 'Albron', 'Zuiderzoet', 'Vervallen', 'CMO'],
+                departments: ['General', 'Technical', 'Green', 'Pool', 'Cleaning', 'Safety', 'Operations', 'Zuiderzoet', 'Albron'],
+                contractTypes: ['Collecties', 'Park', 'Vervallen']
+            },
+            companies: []
+        };
+
+        let selectedCompanyIds = new Set();
+        let myCategoryChart = null;
+
+        async function initSystem() {
+            const syncEl = document.getElementById('syncStatus');
+            try {
+                syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Laden...';
+                
+                // Fetch data from Supabase table 'app_data'
+                const { data, error } = await supabaseClient
+                    .from('app_data')
+                    .select('*')
+                    .limit(1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0 && data[0].payload) {
+                    appData = { ...appData, ...data[0].payload };
+                } else {
+                    // If table row is empty, seed it for the first time
+                    await supabaseClient.from('app_data').insert([{ payload: appData }]);
+                }
+
+                syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
+            } catch (e) {
+                console.error("Failed loading data from Supabase:", e);
+                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
+            }
+
+            // Ensure current year is in list
+            const currentYear = new Date().getFullYear();
+            if (!appData.settings.years.includes(currentYear)) {
+                appData.settings.years.push(currentYear);
+                appData.settings.years.sort();
+            }
+            if (!appData.activeYear) {
+                appData.activeYear = currentYear;
+            }
+
+            populateYearDropdowns();
+            refreshDashboard();
+        }
+
+        async function saveData() {
+            const syncEl = document.getElementById('syncStatus');
+            syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
+            
+            try {
+                // Upsert to row ID 1 or update the existing row
+                const { error } = await supabaseClient
+                    .from('app_data')
+                    .upsert({ id: 1, payload: appData });
+
+                if (error) throw error;
+                syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
+            } catch (e) {
+                console.error("Failed saving data to Supabase:", e);
+                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Opslaan mislukt';
+                alert('Fout bij opslaan in de cloud. Controleer je internetverbinding.');
+            }
+        }
+
+        function populateYearDropdowns() {
+            const select = document.getElementById('globalYearSelect');
+            select.innerHTML = '';
+            appData.settings.years.forEach(yr => {
+                const opt = document.createElement('option');
+                opt.value = yr;
+                opt.textContent = yr;
+                if (yr === appData.activeYear) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            // Update UI year labels
+            document.querySelectorAll('.lbl-year').forEach(el => el.textContent = appData.activeYear);
+        }
+
+        function changeActiveYear(yearVal) {
+            appData.activeYear = parseInt(yearVal, 10);
+            saveData();
+            populateYearDropdowns();
+            refreshDashboard();
+        }
+
+        /**
+         * CALCULATE YEARLY COSTS WITH 9/12 LOGIC
+         * - Boekjaar: 100% of costs assigned to current year.
+         * - Kalenderjaar: 75% (9/12) assigned to current year, 25% (3/12) carried forward to next year.
+         */
+        function calculateCompanyYearlyCosts(company, year) {
+            let totalContractCost = 0;
+            let totalExtraCost = 0;
+
+            const targetYear = parseInt(year, 10);
+            const prevYear = targetYear - 1;
+
+            // 1. Current Year Contract Cost Contribution
+            if (company.yearlyData && company.yearlyData[targetYear]) {
+                const cur = company.yearlyData[targetYear];
+                const rawAmt = parseFloat(cur.contractAmount) || 0;
+                if (cur.yearType === 'Kalenderjaar') {
+                    totalContractCost += rawAmt * (9 / 12);
+                } else {
+                    totalContractCost += rawAmt; // Boekjaar = 100%
+                }
+
+                // Add Extra Costs for current year (100%)
+                if (Array.isArray(cur.extraCosts)) {
+                    cur.extraCosts.forEach(ex => {
+                        totalExtraCost += parseFloat(ex.amount) || 0;
+                    });
+                }
+            }
+
+            // 2. Previous Year Carry-over for Kalenderjaar (3/12)
+            if (company.yearlyData && company.yearlyData[prevYear]) {
+                const prev = company.yearlyData[prevYear];
+                const prevAmt = parseFloat(prev.contractAmount) || 0;
+                if (prev.yearType === 'Kalenderjaar') {
+                    totalContractCost += prevAmt * (3 / 12);
+                }
+            }
+
+            return {
+                contractCost: totalContractCost,
+                extraCost: totalExtraCost,
+                totalCost: totalContractCost + totalExtraCost
+            };
+        }
+
+        function refreshDashboard() {
+            const curYear = appData.activeYear;
+            const budget = appData.settings.budgets[curYear] || 0;
+
+            let totalContractCosts = 0;
+            let totalExtraCosts = 0;
+            let activeCount = 0;
+            let inactiveCount = 0;
+
+            const categoryTotals = {};
+            appData.settings.categories.forEach(cat => categoryTotals[cat] = 0);
+
+            appData.companies.forEach(comp => {
+                if (comp.active === false) {
+                    inactiveCount++;
+                } else {
+                    activeCount++;
+                }
+
+                // Include active companies in costs
+                if (comp.active !== false) {
+                    const costs = calculateCompanyYearlyCosts(comp, curYear);
+                    totalContractCosts += costs.contractCost;
+                    totalExtraCosts += costs.extraCost;
+
+                    const cat = comp.category || 'Overig';
+                    categoryTotals[cat] = (categoryTotals[cat] || 0) + costs.totalCost;
+                }
+            });
+
+            const totalCosts = totalContractCosts + totalExtraCosts;
+            const remainingBudget = budget - totalCosts;
+
+            // Update KPI Cards UI
+            document.getElementById('kpiBudget').textContent = formatCurrency(budget);
+            document.getElementById('kpiCosts').textContent = formatCurrency(totalCosts);
+            document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(totalContractCosts)} | Extra: ${formatCurrency(totalExtraCosts)}`;
+
+            const remEl = document.getElementById('kpiRemaining');
+            remEl.textContent = formatCurrency(remainingBudget);
+            if (remainingBudget < 0) {
+                remEl.className = 'text-2xl font-bold text-rose-600';
+            } else {
+                remEl.className = 'text-2xl font-bold text-emerald-600';
+            }
+
+            const pct = budget > 0 ? ((remainingBudget / budget) * 100).toFixed(1) : 0;
+            document.getElementById('kpiRemainingPct').textContent = `${pct}% van budget over`;
+
+            document.getElementById('kpiCompaniesCount').textContent = appData.companies.length;
+            document.getElementById('kpiActiveCompaniesSub').textContent = `${activeCount} Actief / ${inactiveCount} Inactief`;
+
+            populateCategoryFilterDropdowns();
+            renderChart(categoryTotals);
+            renderCompanyTable();
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount || 0);
+        }
+
+        function populateCategoryFilterDropdowns() {
+            const chartFilter = document.getElementById('chartCategoryFilter');
+            const tableFilter = document.getElementById('filterCategory');
+
+            const curChartVal = chartFilter.value;
+            const curTableVal = tableFilter.value;
+
+            chartFilter.innerHTML = '<option value="ALL">Alle Categorieën</option>';
+            tableFilter.innerHTML = '<option value="ALL">Alle Categorieën</option>';
+
+            appData.settings.categories.forEach(cat => {
+                chartFilter.innerHTML += `<option value="${cat}">${cat}</option>`;
+                tableFilter.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+
+            chartFilter.value = curChartVal || 'ALL';
+            tableFilter.value = curTableVal || 'ALL';
+        }
+
+        function renderChart(categoryTotals = null) {
+            if (!categoryTotals) {
+                categoryTotals = {};
+                appData.settings.categories.forEach(cat => categoryTotals[cat] = 0);
+                appData.companies.forEach(comp => {
+                    if (comp.active !== false) {
+                        const costs = calculateCompanyYearlyCosts(comp, appData.activeYear);
+                        const cat = comp.category || 'Overig';
+                        categoryTotals[cat] = (categoryTotals[cat] || 0) + costs.totalCost;
+                    }
+                });
+            }
+
+            const filterVal = document.getElementById('chartCategoryFilter').value;
+            let labels = Object.keys(categoryTotals);
+            let data = Object.values(categoryTotals);
+
+            if (filterVal !== 'ALL') {
+                labels = labels.filter(l => l === filterVal);
+                data = labels.map(l => categoryTotals[l] || 0);
+            }
+
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            if (myCategoryChart) {
+                myCategoryChart.destroy();
+            }
+
+            const colors = [
+                '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+                '#14b8a6', '#f97316', '#6366f1', '#06b6d4', '#64748b'
+            ];
+
+            myCategoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, font: { size: 10 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        function renderCompanyTable() {
+            const tbody = document.getElementById('companyTableBody');
+            tbody.innerHTML = '';
+
+            const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+            const catVal = document.getElementById('filterCategory').value;
+            const statusVal = document.getElementById('filterStatus').value;
+
+            const curYear = appData.activeYear;
+
+            const filteredCompanies = appData.companies.filter(comp => {
+                // Search filter
+                const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
+                const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
+                if (!nameMatch && !descMatch) return false;
+
+                // Category filter
+                if (catVal !== 'ALL' && comp.category !== catVal) return false;
+
+                // Status filter
+                if (statusVal === 'ACTIVE' && comp.active === false) return false;
+                if (statusVal === 'INACTIVE' && comp.active !== false) return false;
+
+                return true;
+            });
+
+            if (filteredCompanies.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="p-8 text-center text-slate-400">
+                            Geen bedrijven gevonden die aan de gekozen filters voldoen.
+                        </td>
+                    </tr>
+                `;
+                updateSelectedTotal();
+                return;
+            }
+
+            filteredCompanies.forEach(comp => {
+                const isSelected = selectedCompanyIds.has(comp.id);
+                const costs = calculateCompanyYearlyCosts(comp, curYear);
+                const yearInfo = (comp.yearlyData && comp.yearlyData[curYear]) ? comp.yearlyData[curYear] : {};
+
+                const poNumbers = yearInfo.poNumber || '-';
+                const yearType = yearInfo.yearType || 'Boekjaar';
+                const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
+
+                // Main Row
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-slate-50 transition-colors ${comp.active === false ? 'opacity-50 bg-slate-50' : ''}`;
+                tr.innerHTML = `
+                    <td class="p-3 text-center">
+                        <input type="checkbox" onchange="toggleSelectCompany('${comp.id}', this.checked)" ${isSelected ? 'checked' : ''} class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                    </td>
+                    <td class="p-3 font-bold text-brand-600 hover:text-brand-800 cursor-pointer" onclick="openCompanyModal('${comp.id}')">
+                        ${escapeHtml(comp.name)}
+                        ${comp.active === false ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">Inactief</span>' : ''}
+                    </td>
+                    <td class="p-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(comp.description || '')}">${escapeHtml(comp.description || '-')}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
+                    <td class="p-3 text-slate-600">${escapeHtml(yearType)}</td>
+                    <td class="p-3 text-right font-bold text-slate-900">${formatCurrency(costs.totalCost)}</td>
+                    <td class="p-3 text-slate-600 font-mono text-[11px]">${escapeHtml(poNumbers)}</td>
+                    <td class="p-3 text-center">
+                        ${hasExtra ? `
+                            <button onclick="toggleExtraRow('${comp.id}')" class="text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md font-semibold transition-colors">
+                                <i class="fa-solid fa-chevron-down mr-1"></i> Extra (${yearInfo.extraCosts.length})
+                            </button>
+                        ` : '<span class="text-slate-300">-</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                // Sub-Row for Extra Costs if present
+                if (hasExtra) {
+                    const subTr = document.createElement('tr');
+                    subTr.id = `extra-row-${comp.id}`;
+                    subTr.className = 'hidden bg-amber-50/40 border-b border-amber-100';
+                    let extraRowsHtml = yearInfo.extraCosts.map(ex => `
+                        <div class="flex justify-between items-center text-xs text-slate-700 py-1 border-b border-amber-100/60 last:border-0">
+                            <div>
+                                <strong class="text-slate-900">${escapeHtml(ex.description || 'Extra kosten')}</strong>
+                                <span class="ml-2 px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded text-[10px]">${escapeHtml(ex.category || 'Overig')}</span>
+                                ${ex.poNumber ? `<span class="ml-2 font-mono text-slate-500 text-[11px]">PO: ${escapeHtml(ex.poNumber)}</span>` : ''}
+                            </div>
+                            <div class="font-bold text-slate-800">${formatCurrency(ex.amount)}</div>
+                        </div>
+                    `).join('');
+
+                    subTr.innerHTML = `
+                        <td></td>
+                        <td colspan="7" class="p-3 pl-8">
+                            <div class="bg-white/80 p-3 rounded-xl border border-amber-200/80 shadow-inner">
+                                <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">Specificatie Extra Kosten (<span class="lbl-year">${curYear}</span>):</span>
+                                ${extraRowsHtml}
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(subTr);
+                }
+            });
+
+            updateSelectedTotal();
+        }
+
+        function toggleExtraRow(compId) {
+            const row = document.getElementById(`extra-row-${compId}`);
+            if (row) {
+                row.classList.toggle('hidden');
+            }
+        }
+
+        function toggleSelectCompany(id, checked) {
+            if (checked) {
+                selectedCompanyIds.add(id);
+            } else {
+                selectedCompanyIds.delete(id);
+            }
+            updateSelectedTotal();
+        }
+
+        function toggleMasterCheckbox(checked) {
+            const checkboxes = document.querySelectorAll('#companyTableBody input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = checked;
+            });
+            if (checked) {
+                appData.companies.forEach(c => selectedCompanyIds.add(c.id));
+            } else {
+                selectedCompanyIds.clear();
+            }
+            updateSelectedTotal();
+        }
+
+        function selectAllCompanies(selectAll) {
+            toggleMasterCheckbox(selectAll);
+            const master = document.getElementById('masterCheckbox');
+            if (master) master.checked = selectAll;
+        }
+
+        function updateSelectedTotal() {
+            let total = 0;
+            let contractTotal = 0;
+            let extraTotal = 0;
+            const curYear = appData.activeYear;
+
+            selectedCompanyIds.forEach(id => {
+                const comp = appData.companies.find(c => c.id === id);
+                if (comp) {
+                    const costs = calculateCompanyYearlyCosts(comp, curYear);
+                    contractTotal += costs.contractCost;
+                    extraTotal += costs.extraCost;
+                    total += costs.totalCost;
+                }
+            });
+
+            document.getElementById('selectedCountText').textContent = selectedCompanyIds.size;
+            document.getElementById('selectedCostTotal').textContent = formatCurrency(total);
+            document.getElementById('selectedSubtext').textContent = `Contract: ${formatCurrency(contractTotal)} | Extra: ${formatCurrency(extraTotal)}`;
+        }
+
+        function openCompanyModal(companyId = null) {
+            const form = document.getElementById('companyForm');
+            form.reset();
+
+            populateDropdownOptions();
+
+            const isEditMode = !companyId; // New companies start directly in edit mode
+            setCompanyModalEditState(isEditMode);
+
+            if (companyId) {
+                const company = appData.companies.find(c => c.id === companyId);
+                if (!company) return;
+
+                document.getElementById('editCompanyId').value = company.id;
+                document.getElementById('modalCompanyNameTitle').textContent = company.name;
+
+                document.getElementById('inpCompName').value = company.name || '';
+                document.getElementById('inpCompActive').value = company.active !== false ? 'true' : 'false';
+                document.getElementById('inpContractName').value = company.contractName || '';
+                document.getElementById('inpCompPhone').value = company.phone || '';
+                document.getElementById('inpCompEmail').value = company.email || '';
+                document.getElementById('inpCompOrg').value = company.orgName || '';
+                document.getElementById('inpCompAddress').value = company.address || '';
+                document.getElementById('inpCompDescription').value = company.description || '';
+                document.getElementById('inpCompCategory').value = company.category || appData.settings.categories[0];
+                document.getElementById('inpCompDepartment').value = company.department || appData.settings.departments[0];
+                document.getElementById('inpCompContractType').value = company.contractType || appData.settings.contractTypes[0];
+                document.getElementById('inpCompStartDate').value = company.startDate || '';
+                document.getElementById('inpCompDuration').value = company.durationMonths || 12;
+                document.getElementById('inpCompCompulsory').value = company.compulsory || 'Nee';
+
+                renderYearlyBreakdownCards(company.yearlyData || {});
+            } else {
+                document.getElementById('editCompanyId').value = '';
+                document.getElementById('modalCompanyNameTitle').textContent = 'Nieuw Bedrijf Opvoeren';
+                document.getElementById('inpCompActive').value = 'true';
+                renderYearlyBreakdownCards({});
+            }
+
+            const modal = document.getElementById('companyModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCompanyModal() {
+            const modal = document.getElementById('companyModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function setCompanyModalEditState(isEditing) {
+            const inputs = document.querySelectorAll('.inp-editable');
+            inputs.forEach(inp => {
+                inp.disabled = !isEditing;
+            });
+
+            const btnSave = document.getElementById('btnSaveCompany');
+            const btnText = document.getElementById('btnToggleEditModeText');
+
+            if (isEditing) {
+                btnSave.classList.remove('hidden');
+                btnText.textContent = 'Leesmodus';
+            } else {
+                btnSave.classList.add('hidden');
+                btnText.textContent = 'Bewerken';
+            }
+        }
+
+        function toggleEditMode() {
+            const btnSave = document.getElementById('btnSaveCompany');
+            const isCurrentlyEditing = !btnSave.classList.contains('hidden');
+            setCompanyModalEditState(!isCurrentlyEditing);
+        }
+
+        function populateDropdownOptions() {
+            const catSel = document.getElementById('inpCompCategory');
+            const deptSel = document.getElementById('inpCompDepartment');
+            const typeSel = document.getElementById('inpCompContractType');
+
+            catSel.innerHTML = appData.settings.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            deptSel.innerHTML = appData.settings.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+            typeSel.innerHTML = appData.settings.contractTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+        }
+
+        function renderYearlyBreakdownCards(yearlyData) {
+            const container = document.getElementById('yearlyBreakdownContainer');
+            container.innerHTML = '';
+
+            appData.settings.years.forEach(yr => {
+                const yrData = yearlyData[yr] || {
+                    contractAmount: 0,
+                    yearType: 'Boekjaar',
+                    poNumber: '',
+                    verified: false,
+                    extraCosts: []
+                };
+
+                const card = document.createElement('div');
+                card.id = `year-card-${yr}`;
+                card.className = `p-4 rounded-xl border transition-all ${yrData.verified ? 'year-card-verified border-emerald-300' : 'bg-slate-50 border-slate-200/80'}`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="yr-verified-${yr}" onchange="toggleYearVerified('${yr}', this.checked)" ${yrData.verified ? 'checked' : ''} class="inp-editable rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                            <label for="yr-verified-${yr}" class="font-bold text-sm text-slate-800 cursor-pointer">Jaar ${yr}</label>
+                        </div>
+                        <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Financiële gegegevens</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Contract Bedrag (€)</label>
+                            <input type="number" step="0.01" id="yr-amt-${yr}" value="${yrData.contractAmount || 0}" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Type Jaar</label>
+                            <select id="yr-type-${yr}" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                <option value="Boekjaar" ${yrData.yearType === 'Boekjaar' ? 'selected' : ''}>Boekjaar (100%)</option>
+                                <option value="Kalenderjaar" ${yrData.yearType === 'Kalenderjaar' ? 'selected' : ''}>Kalenderjaar (9/12 split)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">PO Nummer(s)</label>
+                            <input type="text" id="yr-po-${yr}" value="${escapeHtml(yrData.poNumber || '')}" placeholder="bijv. PO-2026-001" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                        </div>
+                    </div>
+
+                    <!-- Extra Costs for this year -->
+                    <div class="bg-white/80 p-3 rounded-lg border border-slate-200/60">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[11px] font-bold text-slate-700">Extra Kosten Voor Jaar ${yr}</span>
+                            <button type="button" onclick="addExtraCostLine('${yr}')" class="inp-editable text-[11px] text-brand-600 hover:text-brand-800 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Regel Toevoegen
+                            </button>
+                        </div>
+                        <div id="extra-costs-list-${yr}" class="space-y-2">
+                            <!-- Dynamic Extra Cost Rows -->
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                // Render existing extra cost lines
+                if (Array.isArray(yrData.extraCosts)) {
+                    yrData.extraCosts.forEach(ex => addExtraCostLine(yr, ex));
+                }
+            });
+        }
+
+        function toggleYearVerified(yr, isChecked) {
+            const card = document.getElementById(`year-card-${yr}`);
+            if (card) {
+                if (isChecked) {
+                    card.classList.add('year-card-verified', 'border-emerald-300');
+                    card.classList.remove('bg-slate-50', 'border-slate-200/80');
+                } else {
+                    card.classList.remove('year-card-verified', 'border-emerald-300');
+                    card.classList.add('bg-slate-50', 'border-slate-200/80');
+                }
+            }
+        }
+
+        function addExtraCostLine(yr, data = null) {
+            const container = document.getElementById(`extra-costs-list-${yr}`);
+            if (!container) return;
+
+            const rowId = 'ex_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const row = document.createElement('div');
+            row.id = rowId;
+            row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200/60 text-xs';
+
+            const catOptions = appData.settings.categories.map(c => `<option value="${c}" ${data && data.category === c ? 'selected' : ''}>${c}</option>`).join('');
+
+            row.innerHTML = `
+                <div class="col-span-3">
+                    <input type="text" placeholder="Omschrijving..." value="${escapeHtml(data ? data.description || '' : '')}" class="inp-editable ex-desc w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-3">
+                    <select class="inp-editable ex-cat w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                        ${catOptions}
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <input type="number" step="0.01" placeholder="Bedrag (€)" value="${data ? data.amount || '' : ''}" class="inp-editable ex-amt w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-3">
+                    <input type="text" placeholder="PO nummer..." value="${escapeHtml(data ? data.poNumber || '' : '')}" class="inp-editable ex-po w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-1 text-right">
+                    <button type="button" onclick="document.getElementById('${rowId}').remove()" class="inp-editable text-slate-400 hover:text-rose-600 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+
+            // Inherit current disabled state
+            const isEditing = !document.getElementById('btnSaveCompany').classList.contains('hidden');
+            row.querySelectorAll('.inp-editable').forEach(inp => inp.disabled = !isEditing);
+        }
+
+        function saveCompanyData(event) {
+            event.preventDefault();
+
+            const compId = document.getElementById('editCompanyId').value;
+            const name = document.getElementById('inpCompName').value.trim();
+
+            if (!name) {
+                alert('Vul a.u.b. een bedrijfsnaam in.');
+                return;
+            }
+
+            // Check duplicate name for new companies
+            if (!compId) {
+                const exists = appData.companies.some(c => c.name.toLowerCase() === name.toLowerCase());
+                if (exists) {
+                    alert(`Een bedrijf met de naam "${name}" bestaat al in het systeem.`);
+                    return;
+                }
+            }
+
+            // Read yearly data
+            const yearlyData = {};
+            appData.settings.years.forEach(yr => {
+                const verified = document.getElementById(`yr-verified-${yr}`)?.checked || false;
+                const amt = parseFloat(document.getElementById(`yr-amt-${yr}`)?.value) || 0;
+                const yearType = document.getElementById(`yr-type-${yr}`)?.value || 'Boekjaar';
+                const poNumber = document.getElementById(`yr-po-${yr}`)?.value || '';
+
+                const extraCosts = [];
+                const extraContainer = document.getElementById(`extra-costs-list-${yr}`);
+                if (extraContainer) {
+                    extraContainer.querySelectorAll('[id^="ex_"]').forEach(row => {
+                        const desc = row.querySelector('.ex-desc')?.value || '';
+                        const cat = row.querySelector('.ex-cat')?.value || '';
+                        const amount = parseFloat(row.querySelector('.ex-amt')?.value) || 0;
+                        const po = row.querySelector('.ex-po')?.value || '';
+                        if (amount > 0 || desc) {
+                            extraCosts.push({ description: desc, category: cat, amount: amount, poNumber: po });
+                        }
+                    });
+                }
+
+                yearlyData[yr] = {
+                    contractAmount: amt,
+                    yearType: yearType,
+                    poNumber: poNumber,
+                    verified: verified,
+                    extraCosts: extraCosts
+                };
+            });
+
+            const companyPayload = {
+                id: compId || 'comp_' + Date.now(),
+                name: name,
+                active: document.getElementById('inpCompActive').value === 'true',
+                contractName: document.getElementById('inpContractName').value,
+                phone: document.getElementById('inpCompPhone').value,
+                email: document.getElementById('inpCompEmail').value,
+                orgName: document.getElementById('inpCompOrg').value,
+                address: document.getElementById('inpCompAddress').value,
+                description: document.getElementById('inpCompDescription').value,
+                category: document.getElementById('inpCompCategory').value,
+                department: document.getElementById('inpCompDepartment').value,
+                contractType: document.getElementById('inpCompContractType').value,
+                startDate: document.getElementById('inpCompStartDate').value,
+                durationMonths: parseInt(document.getElementById('inpCompDuration').value, 10) || 12,
+                compulsory: document.getElementById('inpCompCompulsory').value,
+                yearlyData: yearlyData
+            };
+
+            if (compId) {
+                const idx = appData.companies.findIndex(c => c.id === compId);
+                if (idx !== -1) appData.companies[idx] = companyPayload;
+            } else {
+                appData.companies.push(companyPayload);
+            }
+
+            saveData();
+            closeCompanyModal();
+            refreshDashboard();
+        }
+
+        function openSettingsModal() {
+            renderListOptionTags('contractTypes', 'listContractTypes');
+            renderListOptionTags('categories', 'listCategories');
+            renderListOptionTags('departments', 'listDepartments');
+            renderBudgetSettingsTable();
+
+            const modal = document.getElementById('settingsModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            saveData();
+            populateYearDropdowns();
+            refreshDashboard();
+        }
+
+        function renderListOptionTags(key, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            appData.settings[key].forEach(opt => {
+                const tag = document.createElement('span');
+                tag.className = 'inline-flex items-center space-x-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-sm';
+                tag.innerHTML = `
+                    <span>${escapeHtml(opt)}</span>
+                    <button type="button" onclick="removeListOption('${key}', '${escapeJsStr(opt)}')" class="text-slate-400 hover:text-rose-600 transition-colors ml-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function addListOption(key, inputId) {
+            const input = document.getElementById(inputId);
+            const val = input.value.trim();
+            if (!val) return;
+
+            if (!appData.settings[key].includes(val)) {
+                appData.settings[key].push(val);
+                input.value = '';
+                renderListOptionTags(key, key === 'contractTypes' ? 'listContractTypes' : key === 'categories' ? 'listCategories' : 'listDepartments');
+            }
+        }
+
+        function removeListOption(key, val) {
+            appData.settings[key] = appData.settings[key].filter(x => x !== val);
+            renderListOptionTags(key, key === 'contractTypes' ? 'listContractTypes' : key === 'categories' ? 'listCategories' : 'listDepartments');
+        }
+
+        function renderBudgetSettingsTable() {
+            const tbody = document.getElementById('budgetSettingsTableBody');
+            tbody.innerHTML = '';
+
+            appData.settings.years.forEach(yr => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-slate-800">${yr}</td>
+                    <td class="p-2">
+                        <input type="number" id="budget-input-${yr}" value="${appData.settings.budgets[yr] || 0}" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                    </td>
+                    <td class="p-2 text-right">
+                        <button onclick="saveSingleBudget(${yr})" class="bg-brand-600 hover:bg-brand-500 text-white px-2 py-1 rounded text-[11px] font-semibold">Opslaan</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function saveSingleBudget(yr) {
+            const val = parseFloat(document.getElementById(`budget-input-${yr}`)?.value) || 0;
+            appData.settings.budgets[yr] = val;
+            saveData();
+            alert(`Budget voor jaar ${yr} opgeslagen op € ${val.toLocaleString('nl-NL')}`);
+        }
+
+        function addNewYearSetting() {
+            const yrInput = document.getElementById('newYearInput');
+            const budgetInput = document.getElementById('newYearBudgetInput');
+
+            const yr = parseInt(yrInput.value, 10);
+            const budget = parseFloat(budgetInput.value) || 0;
+
+            if (!yr || yr < 2000 || yr > 2100) {
+                alert('Voer a.u.b. een geldig jaartal in (bijv. 2028).');
+                return;
+            }
+
+            if (!appData.settings.years.includes(yr)) {
+                appData.settings.years.push(yr);
+                appData.settings.years.sort();
+            }
+
+            appData.settings.budgets[yr] = budget;
+
+            yrInput.value = '';
+            budgetInput.value = '';
+
+            renderBudgetSettingsTable();
+            saveData();
+            populateYearDropdowns();
+        }
+
+        function openReportModal() {
+            const modal = document.getElementById('reportModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeReportModal() {
+            const modal = document.getElementById('reportModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function exportToExcel() {
+            const curYear = appData.activeYear;
+            const rows = [];
+
+            appData.companies.forEach(comp => {
+                const costs = calculateCompanyYearlyCosts(comp, curYear);
+                const yearInfo = (comp.yearlyData && comp.yearlyData[curYear]) ? comp.yearlyData[curYear] : {};
+
+                rows.push({
+                    'Bedrijfsnaam': comp.name,
+                    'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                    'Contractnaam': comp.contractName || '',
+                    'Categorie': comp.category || '',
+                    'Afdeling': comp.department || '',
+                    'Omschrijving': comp.description || '',
+                    'Type Jaar': yearInfo.yearType || 'Boekjaar',
+                    'Kosten Contract (€)': costs.contractCost,
+                    'Extra Kosten (€)': costs.extraCost,
+                    'Totale Kosten (€)': costs.totalCost,
+                    'PO Nummer(s)': yearInfo.poNumber || ''
+                });
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, `Contracten ${curYear}`);
+
+            XLSX.writeFile(workbook, `Contracten_Overzicht_${curYear}.xlsx`);
+        }
+
+        function downloadExcelTemplate() {
+            const sampleData = [
+                {
+                    'Bedrijfsnaam': 'Voorbeeld Bedrijf A',
+                    'Contractnaam': 'Onderhoud Contract',
+                    'Categorie': 'Fixed',
+                    'Afdeling': 'General',
+                    'Telefoon': '0612345678',
+                    'Email': 'info@voorbeeld.nl',
+                    'Omschrijving': 'Regulier onderhoud pand',
+                    'Contractbedrag': 12000,
+                    'Type Jaar': 'Boekjaar',
+                    'PO Nummer': 'PO-2026-99'
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(sampleData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Import Sjabloon");
+
+            XLSX.writeFile(wb, "Contracten_Import_Sjabloon.xlsx");
+        }
+
+        function importExcelFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.SheetNames[0];
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+
+                    let importedCount = 0;
+                    let skippedCount = 0;
+                    const curYear = appData.activeYear;
+
+                    jsonData.forEach(row => {
+                        const name = row['Bedrijfsnaam'] || row['bedrijfsnaam'] || row['Name'] || row['name'];
+                        if (!name) return;
+
+                        // Check duplicate company name
+                        const exists = appData.companies.some(c => c.name.trim().toLowerCase() === String(name).trim().toLowerCase());
+                        if (exists) {
+                            skippedCount++;
+                            return; // Skip duplicate
+                        }
+
+                        const contractAmt = parseFloat(row['Contractbedrag'] || row['bedrag'] || row['Amount']) || 0;
+                        const yearType = row['Type Jaar'] || 'Boekjaar';
+                        const poNum = row['PO Nummer'] || row['PO'] || '';
+
+                        const yearlyData = {};
+                        yearlyData[curYear] = {
+                            contractAmount: contractAmt,
+                            yearType: yearType,
+                            poNumber: String(poNum),
+                            verified: false,
+                            extraCosts: []
+                        };
+
+                        const newCompany = {
+                            id: 'comp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                            name: String(name).trim(),
+                            active: true,
+                            contractName: row['Contractnaam'] || '',
+                            phone: row['Telefoon'] || '',
+                            email: row['Email'] || '',
+                            description: row['Omschrijving'] || '',
+                            category: row['Categorie'] || appData.settings.categories[0],
+                            department: row['Afdeling'] || appData.settings.departments[0],
+                            contractType: appData.settings.contractTypes[0],
+                            durationMonths: 12,
+                            compulsory: 'Nee',
+                            yearlyData: yearlyData
+                        };
+
+                        appData.companies.push(newCompany);
+                        importedCount++;
+                    });
+
+                    saveData();
+                    refreshDashboard();
+                    closeReportModal();
+
+                    alert(`Import voltooid!\n- Nieuwe bedrijven geïmporteerd: ${importedCount}\n- Dubbele bedrijven overgeslagen: ${skippedCount}`);
+
+                } catch (err) {
+                    alert('Fout bij het inlezen van het Excel-bestand. Controleer het bestandsformaat.');
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = ''; // Reset file input
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeJsStr(str) {
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            initSystem();
+        });
+    </script>
+</body>
+</html>
