@@ -627,27 +627,30 @@
             const targetYear = parseInt(year, 10);
             const prevYear = targetYear - 1;
 
-            if (company.yearlyData && company.yearlyData[targetYear]) {
-                const cur = company.yearlyData[targetYear];
-                const rawAmt = parseFloat(cur.contractAmount) || 0;
-                if (cur.yearType === 'Kalenderjaar') {
-                    totalContractCost += rawAmt * (9 / 12);
-                } else {
-                    totalContractCost += rawAmt;
+            if (company.yearlyData) {
+                // Check zowel getal als string varianten (bijv. 2025 vs "2025")
+                const curData = company.yearlyData[targetYear] || company.yearlyData[String(targetYear)];
+                if (curData) {
+                    const rawAmt = parseFloat(curData.contractAmount) || 0;
+                    if (curData.yearType === 'Kalenderjaar') {
+                        totalContractCost += rawAmt * (9 / 12);
+                    } else {
+                        totalContractCost += rawAmt;
+                    }
+
+                    if (Array.isArray(curData.extraCosts)) {
+                        curData.extraCosts.forEach(ex => {
+                            totalExtraCost += parseFloat(ex.amount) || 0;
+                        });
+                    }
                 }
 
-                if (Array.isArray(cur.extraCosts)) {
-                    cur.extraCosts.forEach(ex => {
-                        totalExtraCost += parseFloat(ex.amount) || 0;
-                    });
-                }
-            }
-
-            if (company.yearlyData && company.yearlyData[prevYear]) {
-                const prev = company.yearlyData[prevYear];
-                const prevAmt = parseFloat(prev.contractAmount) || 0;
-                if (prev.yearType === 'Kalenderjaar') {
-                    totalContractCost += prevAmt * (3 / 12);
+                const prevData = company.yearlyData[prevYear] || company.yearlyData[String(prevYear)];
+                if (prevData) {
+                    const prevAmt = parseFloat(prevData.contractAmount) || 0;
+                    if (prevData.yearType === 'Kalenderjaar') {
+                        totalContractCost += prevAmt * (3 / 12);
+                    }
                 }
             }
 
