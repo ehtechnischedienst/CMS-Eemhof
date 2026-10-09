@@ -662,11 +662,10 @@
             const curYear = appData.activeYear;
             const budget = appData.settings.budgets[curYear] || 0;
 
+            let totalContractCosts = 0;
+            let totalExtraCosts = 0;
             let activeCount = 0;
             let inactiveCount = 0;
-
-            let mainFixedContractCosts = 0;
-            let mainFixedExtraCosts = 0;
 
             const categoryTotals = {};
             appData.settings.categories.forEach(cat => categoryTotals[cat] = 0);
@@ -682,23 +681,24 @@
                     const costs = calculateCompanyYearlyCosts(comp, curYear);
                     const cat = comp.category || 'Overig';
                     
-                    // Grafiek en categorie-totalen tonen alle categorieën
+                    // 1. De grafiek en categorie-totalen tonen WEL alle categorieën
                     categoryTotals[cat] = (categoryTotals[cat] || 0) + costs.totalCost;
 
-                    // KPI's (Totale Kosten & Resterend Budget) rekenen alleen op Fixed en Fixed extra
+                    // 2. De KPI's (Totale Kosten & Resterend Budget) tellen ALLEEN op bij Fixed en Fixed extra
                     if (cat === 'Fixed' || cat === 'Fixed extra') {
-                        mainFixedContractCosts += costs.contractCost;
-                        mainFixedExtraCosts += costs.extraCost;
+                        totalContractCosts += costs.contractCost;
+                        totalExtraCosts += costs.extraCost;
                     }
                 }
             });
 
-            const mainFixedTotalCosts = mainFixedContractCosts + mainFixedExtraCosts;
-            const remainingBudget = budget - mainFixedTotalCosts;
+            // Totale kosten voor de KPI zijn nu strikt de som van Fixed en Fixed extra
+            const totalCosts = totalContractCosts + totalExtraCosts;
+            const remainingBudget = budget - totalCosts;
 
             document.getElementById('kpiBudget').textContent = formatCurrency(budget);
-            document.getElementById('kpiCosts').textContent = formatCurrency(mainFixedTotalCosts);
-            document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(mainFixedContractCosts)} | Extra: ${formatCurrency(mainFixedExtraCosts)}`;
+            document.getElementById('kpiCosts').textContent = formatCurrency(totalCosts);
+            document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(totalContractCosts)} | Extra: ${formatCurrency(totalExtraCosts)}`;
 
             const remEl = document.getElementById('kpiRemaining');
             remEl.textContent = formatCurrency(remainingBudget);
