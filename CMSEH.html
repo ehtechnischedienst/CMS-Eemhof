@@ -807,6 +807,9 @@
             });
         }
 
+        // Bewaar de vorige filterstatus om te detecteren wanneer de categorie verandert
+        let previousCategoryFilter = 'ALL';
+
         function renderCompanyTable() {
             const tbody = document.getElementById('companyTableBody');
             if (!tbody) return;
@@ -815,6 +818,12 @@
             const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
             const catVal = document.getElementById('filterCategory').value;
             const statusVal = document.getElementById('filterStatus').value;
+
+            // Als de categorie-filter verandert, wissen we direct de volledige selectie!
+            if (catVal !== previousCategoryFilter) {
+                selectedCompanyIds.clear();
+                previousCategoryFilter = catVal;
+            }
 
             const curYear = appData.activeYear;
 
