@@ -932,12 +932,13 @@
             updateSelectedTotal();
         }
 
-        function toggleMasterCheckbox(checked) {
+      function toggleMasterCheckbox(checked) {
             const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
             const catVal = document.getElementById('filterCategory').value;
             const statusVal = document.getElementById('filterStatus').value;
 
-            const filteredCompanies = appData.companies.filter(comp => {
+            // 1. Haal de lijst op van bedrijven die NU zichtbaar zijn in de gefilterde tabel
+            const visibleCompanies = appData.companies.filter(comp => {
                 const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
                 const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
                 if (!nameMatch && !descMatch) return false;
@@ -950,7 +951,8 @@
                 return true;
             });
 
-            filteredCompanies.forEach(comp => {
+            // 2. Pas de selectie uitsluitend aan voor de zichtbare bedrijven
+            visibleCompanies.forEach(comp => {
                 if (checked) {
                     selectedCompanyIds.add(comp.id);
                 } else {
@@ -964,6 +966,27 @@
         function selectAllCompanies(selectAll) {
             const master = document.getElementById('masterCheckbox');
             if (master) master.checked = selectAll;
+
+            if (!selectAll) {
+                // Als er op 'Demarkeer Alles' wordt geklikt, wissen we voor de zekerheid 
+                // direct ALLE huidige zichtbare gefilterde items uit het geheugen
+                const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+                const catVal = document.getElementById('filterCategory').value;
+                const statusVal = document.getElementById('filterStatus').value;
+
+                appData.companies.forEach(comp => {
+                    const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
+                    const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
+                    if (nameMatch || descMatch) {
+                        if (catVal === 'ALL' || comp.category === catVal) {
+                            if (statusVal === 'ALL' || (statusVal === 'ACTIVE' && comp.active !== false) || (statusVal === 'INACTIVE' && comp.active === false)) {
+                                selectedCompanyIds.delete(comp.id);
+                            }
+                        }
+                    }
+                });
+            }
+
             toggleMasterCheckbox(selectAll);
         }
         function updateSelectedTotal() {
