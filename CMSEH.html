@@ -925,7 +925,10 @@
         }
 
         function toggleMasterCheckbox(checked) {
-            // Haal de huidige filters op om te bepalen welke bedrijven er in beeld staan
+            // Zoek alleen de checkboxes die daadwerkelijk zichtbaar zijn in de tabel
+            const checkboxes = document.querySelectorAll('#companyTableBody input[type="checkbox"]');
+            
+            // Haal de gefilterde bedrijven op die nu op het scherm staan
             const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
             const catVal = document.getElementById('filterCategory').value;
             const statusVal = document.getElementById('filterStatus').value;
@@ -943,13 +946,12 @@
                 return true;
             });
 
-            // Vink de checkboxes in de tabel visueel aan/uit
-            const checkboxes = document.querySelectorAll('#companyTableBody input[type="checkbox"]');
+            // Vink alle zichtbare rijen visueel aan/uit
             checkboxes.forEach(cb => {
                 cb.checked = checked;
             });
 
-            // Voeg alleen de gefilterde bedrijven toe aan de selectie (of verwijder ze bij demarkeren)
+            // Voeg alleen de zichtbare/gefilterde bedrijven toe aan de selectie (of haal ze weg)
             filteredCompanies.forEach(comp => {
                 if (checked) {
                     selectedCompanyIds.add(comp.id);
@@ -962,11 +964,10 @@
         }
 
         function selectAllCompanies(selectAll) {
-            toggleMasterCheckbox(selectAll);
             const master = document.getElementById('masterCheckbox');
             if (master) master.checked = selectAll;
+            toggleMasterCheckbox(selectAll);
         }
-
         function updateSelectedTotal() {
             let total = 0;
             let contractTotal = 0;
