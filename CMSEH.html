@@ -925,15 +925,39 @@
         }
 
         function toggleMasterCheckbox(checked) {
+            // Haal de huidige filters op om te bepalen welke bedrijven er in beeld staan
+            const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+            const catVal = document.getElementById('filterCategory').value;
+            const statusVal = document.getElementById('filterStatus').value;
+
+            const filteredCompanies = appData.companies.filter(comp => {
+                const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
+                const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
+                if (!nameMatch && !descMatch) return false;
+
+                if (catVal !== 'ALL' && comp.category !== catVal) return false;
+
+                if (statusVal === 'ACTIVE' && comp.active === false) return false;
+                if (statusVal === 'INACTIVE' && comp.active !== false) return false;
+
+                return true;
+            });
+
+            // Vink de checkboxes in de tabel visueel aan/uit
             const checkboxes = document.querySelectorAll('#companyTableBody input[type="checkbox"]');
             checkboxes.forEach(cb => {
                 cb.checked = checked;
             });
-            if (checked) {
-                appData.companies.forEach(c => selectedCompanyIds.add(c.id));
-            } else {
-                selectedCompanyIds.clear();
-            }
+
+            // Voeg alleen de gefilterde bedrijven toe aan de selectie (of verwijder ze bij demarkeren)
+            filteredCompanies.forEach(comp => {
+                if (checked) {
+                    selectedCompanyIds.add(comp.id);
+                } else {
+                    selectedCompanyIds.delete(comp.id);
+                }
+            });
+
             updateSelectedTotal();
         }
 
