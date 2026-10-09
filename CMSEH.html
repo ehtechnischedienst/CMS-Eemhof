@@ -864,7 +864,9 @@
             filteredCompanies.forEach(comp => {
                 const isSelected = selectedCompanyIds.has(comp.id);
                 const costs = calculateCompanyYearlyCosts(comp, curYear);
-                const yearInfo = (comp.yearlyData && comp.yearlyData[curYear]) ? comp.yearlyData[curYear] : {};
+                
+                // Vang zowel getal als string varianten van het jaartal op in yearlyData
+                const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
 
                 const poNumbers = yearInfo.poNumber || '-';
                 const yearType = yearInfo.yearType || 'Boekjaar';
