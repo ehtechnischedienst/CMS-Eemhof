@@ -854,10 +854,21 @@
                 const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
                 if (!nameMatch && !descMatch) return false;
 
-                if (catVal !== 'ALL' && comp.category !== catVal) return false;
-
                 if (statusVal === 'ACTIVE' && comp.active === false) return false;
                 if (statusVal === 'INACTIVE' && comp.active !== false) return false;
+
+                // Categorie filter: check of het bedrijf zelf deze categorie heeft,
+                // OF dat de gekozen categorie als extra kosten regel in het actieve jaar voorkomt!
+                if (catVal !== 'ALL') {
+                    const mainCatMatch = (comp.category === catVal);
+                    
+                    const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
+                    const hasExtraCatMatch = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.some(ex => ex.category === catVal);
+
+                    if (!mainCatMatch && !hasExtraCatMatch) {
+                        return false;
+                    }
+                }
 
                 return true;
             });
