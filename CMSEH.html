@@ -1040,11 +1040,13 @@
             let contractTotal = 0;
             let extraTotal = 0;
             const curYear = appData.activeYear;
+            const catVal = document.getElementById('filterCategory').value; // Haal het actieve categorie-filter op
 
             selectedCompanyIds.forEach(id => {
                 const comp = appData.companies.find(c => c.id === id);
                 if (comp) {
-                    const costs = calculateCompanyYearlyCosts(comp, curYear);
+                    // Geef catVal mee zodat alleen de kosten van dat filter worden berekend!
+                    const costs = calculateCompanyYearlyCosts(comp, curYear, catVal);
                     contractTotal += costs.contractCost;
                     extraTotal += costs.extraCost;
                     total += costs.totalCost;
