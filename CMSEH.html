@@ -831,6 +831,15 @@
                 return true;
             });
 
+            // Controleer of alle gefilterde bedrijven momenteel geselecteerd zijn om de master checkbox goed te zetten
+            const masterCheckbox = document.getElementById('masterCheckbox');
+            if (masterCheckbox && filteredCompanies.length > 0) {
+                const allVisibleSelected = filteredCompanies.every(comp => selectedCompanyIds.has(comp.id));
+                masterCheckbox.checked = allVisibleSelected;
+            } else if (masterCheckbox) {
+                masterCheckbox.checked = false;
+            }
+
             if (filteredCompanies.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -907,7 +916,6 @@
 
             updateSelectedTotal();
         }
-
         function toggleExtraRow(compId) {
             const row = document.getElementById(`extra-row-${compId}`);
             if (row) {
@@ -925,10 +933,6 @@
         }
 
         function toggleMasterCheckbox(checked) {
-            // Zoek alleen de checkboxes die daadwerkelijk zichtbaar zijn in de tabel
-            const checkboxes = document.querySelectorAll('#companyTableBody input[type="checkbox"]');
-            
-            // Haal de gefilterde bedrijven op die nu op het scherm staan
             const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
             const catVal = document.getElementById('filterCategory').value;
             const statusVal = document.getElementById('filterStatus').value;
@@ -946,12 +950,6 @@
                 return true;
             });
 
-            // Vink alle zichtbare rijen visueel aan/uit
-            checkboxes.forEach(cb => {
-                cb.checked = checked;
-            });
-
-            // Voeg alleen de zichtbare/gefilterde bedrijven toe aan de selectie (of haal ze weg)
             filteredCompanies.forEach(comp => {
                 if (checked) {
                     selectedCompanyIds.add(comp.id);
@@ -960,7 +958,7 @@
                 }
             });
 
-            updateSelectedTotal();
+            renderCompanyTable();
         }
 
         function selectAllCompanies(selectAll) {
