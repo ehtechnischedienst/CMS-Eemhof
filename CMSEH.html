@@ -636,14 +636,14 @@
                         contractFactor = 9 / 12;
                     }
 
-                    // 1. Check of het hoofdcontract overeenkomt met het filter
+                    // 1. Hoofdcontract telt alleen mee als de hoofdcategorie van het bedrijf overeenkomt met het filter (of als filter op 'ALL' staat)
                     const mainCat = company.category || 'Fixed';
                     const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
                     if (mainMatches) {
                         matchedContractCost += rawAmt * contractFactor;
                     }
 
-                    // 2. Check de extra kosten regels
+                    // 2. Extra kosten: tel EXLUSIEF de regels op die matchen met het filter
                     if (Array.isArray(curData.extraCosts)) {
                         curData.extraCosts.forEach(ex => {
                             const exAmt = parseFloat(ex.amount) || 0;
@@ -651,7 +651,7 @@
                             const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
 
                             if (exMatches) {
-                                // 'Fixed extra' telt altijd voor 100% mee, overige volgen het contracttype
+                                // 'Fixed extra' telt altijd voor 100% mee, overige extra kosten volgen het contracttype
                                 if (exCat === 'Fixed extra') {
                                     matchedExtraCost += exAmt;
                                 } else {
