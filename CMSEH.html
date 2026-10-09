@@ -60,12 +60,10 @@
 
                 <!-- Global Controls -->
                 <div class="flex items-center space-x-3">
-                    <!-- Sync Indicator -->
                     <span id="syncStatus" class="text-[11px] text-emerald-400 hidden sm:inline-block bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
                         <i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden
                     </span>
 
-                    <!-- Year Picker -->
                     <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
                         <i class="fa-solid fa-calendar-days text-brand-500 text-sm"></i>
                         <span class="text-xs text-slate-400 font-medium">Actief Jaar:</span>
@@ -74,7 +72,6 @@
                         </select>
                     </div>
 
-                    <!-- Action Buttons -->
                     <button onclick="openCompanyModal()" class="bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl shadow transition-all flex items-center space-x-1.5">
                         <i class="fa-solid fa-plus"></i>
                         <span>Nieuw Bedrijf</span>
@@ -99,7 +96,6 @@
 
         <!-- KPI Summary Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- Total Budget Card -->
             <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Budget (<span class="lbl-year">2026</span>)</span>
@@ -113,7 +109,6 @@
                 </div>
             </div>
 
-            <!-- Total Costs Card -->
             <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Totale Kosten (<span class="lbl-year">2026</span>)</span>
@@ -127,7 +122,6 @@
                 </div>
             </div>
 
-            <!-- Remaining Budget Card -->
             <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resterend Budget</span>
@@ -141,7 +135,6 @@
                 </div>
             </div>
 
-            <!-- Active Companies Counter -->
             <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Bedrijven In Systeem</span>
@@ -158,7 +151,6 @@
 
         <!-- Chart & Analytics Section -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Category Donut Chart -->
             <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-1 flex flex-col justify-between">
                 <div>
                     <div class="flex justify-between items-center mb-3">
@@ -179,7 +171,6 @@
                 </div>
             </div>
 
-            <!-- Live Selection Summary & Controls -->
             <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-2 flex flex-col justify-between">
                 <div>
                     <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
@@ -200,7 +191,6 @@
                         </div>
                     </div>
 
-                    <!-- Search & Filters -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-500 mb-1">Zoek Bedrijf / Omschrijving</label>
@@ -226,7 +216,6 @@
                     </div>
                 </div>
 
-                <!-- Selected Companies Total Counter Bar -->
                 <div class="p-4 bg-slate-900 text-white rounded-xl flex flex-wrap justify-between items-center gap-3">
                     <div class="flex items-center space-x-3">
                         <div class="bg-brand-500 p-2.5 rounded-lg text-white">
@@ -274,7 +263,7 @@
                         </tr>
                     </thead>
                     <tbody id="companyTableBody" class="divide-y divide-slate-100">
-                        <!-- Populated dynamically via JavaScript -->
+                        <!-- Populated dynamically -->
                     </tbody>
                 </table>
             </div>
@@ -284,7 +273,6 @@
     <!-- Company Detail / Edit Popup Modal -->
     <div id="companyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden border border-slate-100 my-8">
-            <!-- Modal Header -->
             <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
                 <div class="flex items-center space-x-3">
                     <div class="bg-brand-500 p-2 rounded-xl text-white">
@@ -306,11 +294,9 @@
                 </div>
             </div>
 
-            <!-- Modal Content Form -->
             <form id="companyForm" onsubmit="saveCompanyData(event)" class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
                 <input type="hidden" id="editCompanyId">
 
-                <!-- Stamgegevens Section -->
                 <div>
                     <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3 flex items-center gap-2">
                         <i class="fa-solid fa-id-card text-brand-500"></i>
@@ -332,7 +318,6 @@
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Contract Naam</label>
                             <input type="text" id="inpContractName" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
                         </div>
-
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Telefoonnummer</label>
                             <input type="text" id="inpCompPhone" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
@@ -345,36 +330,26 @@
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Organisatie / Naam</label>
                             <input type="text" id="inpCompOrg" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
                         </div>
-
                         <div class="md:col-span-3">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Adresgegevens</label>
                             <input type="text" id="inpCompAddress" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
                         </div>
-
                         <div class="md:col-span-3">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Omschrijving van de Werkzaamheden</label>
                             <textarea id="inpCompDescription" rows="2" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled></textarea>
                         </div>
-
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Contract Categorie</label>
-                            <select id="inpCompCategory" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
-                                <!-- Dynamic -->
-                            </select>
+                            <select id="inpCompCategory" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled></select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Afdeling</label>
-                            <select id="inpCompDepartment" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
-                                <!-- Dynamic -->
-                            </select>
+                            <select id="inpCompDepartment" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled></select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Soort Contract</label>
-                            <select id="inpCompContractType" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
-                                <!-- Dynamic -->
-                            </select>
+                            <select id="inpCompContractType" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled></select>
                         </div>
-
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Start Contractdatum</label>
                             <input type="date" id="inpCompStartDate" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
@@ -393,22 +368,17 @@
                     </div>
                 </div>
 
-                <!-- Yearly Breakdown Section -->
                 <div>
                     <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3 flex items-center justify-between">
                         <span class="flex items-center gap-2">
                             <i class="fa-solid fa-calendar-check text-brand-500"></i>
-                            Kosten &amp; PO-nummers per Jaar (2023 - 2027+)
+                            Kosten &amp; PO-nummers per Jaar
                         </span>
                         <span class="text-slate-400 text-[10px] font-normal lowercase">Vink het vakje aan om het jaar groen te markeren</span>
                     </h4>
-
-                    <div id="yearlyBreakdownContainer" class="space-y-4">
-                        <!-- Dynamic Year Cards generated via JavaScript -->
-                    </div>
+                    <div id="yearlyBreakdownContainer" class="space-y-4"></div>
                 </div>
 
-                <!-- Modal Actions -->
                 <div class="flex justify-between items-center pt-4 border-t border-slate-100">
                     <span class="text-xs text-slate-400">Bedrijven kunnen niet verwijderd worden (alleen op inactief gezet).</span>
                     <div class="flex items-center space-x-2">
@@ -443,98 +413,69 @@
             </div>
 
             <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-                <!-- Manage Contract Types -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                         <span><i class="fa-solid fa-tags text-brand-500 mr-1.5"></i> Contractsoorten</span>
-                        <span class="text-[10px] text-slate-400 font-normal">bijv. Collecties, Park, Vervallen</span>
                     </h4>
                     <div class="flex gap-2">
                         <input type="text" id="newContractTypeInput" placeholder="Nieuwe contractsoort naam..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
                         <button onclick="addListOption('contractTypes', 'newContractTypeInput')" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Toevoegen</button>
                     </div>
-                    <div id="listContractTypes" class="flex flex-wrap gap-2 pt-1">
-                        <!-- Dynamic Tags -->
-                    </div>
+                    <div id="listContractTypes" class="flex flex-wrap gap-2 pt-1"></div>
                 </div>
 
-                <!-- Manage Contract Categories -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                         <span><i class="fa-solid fa-layer-group text-brand-500 mr-1.5"></i> Contract Categorieën</span>
-                        <span class="text-[10px] text-slate-400 font-normal">bijv. Fixed, Operations, Cleaning, Safety</span>
                     </h4>
                     <div class="flex gap-2">
                         <input type="text" id="newCategoryInput" placeholder="Nieuwe categorie naam..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
                         <button onclick="addListOption('categories', 'newCategoryInput')" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Toevoegen</button>
                     </div>
-                    <div id="listCategories" class="flex flex-wrap gap-2 pt-1">
-                        <!-- Dynamic Tags -->
-                    </div>
+                    <div id="listCategories" class="flex flex-wrap gap-2 pt-1"></div>
                 </div>
 
-                <!-- Manage Departments -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                         <span><i class="fa-solid fa-sitemap text-brand-500 mr-1.5"></i> Afdelingen</span>
-                        <span class="text-[10px] text-slate-400 font-normal">bijv. General, Technical, Green, Pool</span>
                     </h4>
                     <div class="flex gap-2">
                         <input type="text" id="newDepartmentInput" placeholder="Nieuwe afdeling naam..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
                         <button onclick="addListOption('departments', 'newDepartmentInput')" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Toevoegen</button>
                     </div>
-                    <div id="listDepartments" class="flex flex-wrap gap-2 pt-1">
-                        <!-- Dynamic Tags -->
-                    </div>
+                    <div id="listDepartments" class="flex flex-wrap gap-2 pt-1"></div>
                 </div>
 
-                <!-- Manage Years & Budgets -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        <i class="fa-solid fa-calendar-plus text-brand-500 mr-1.5"></i> Jaartallen &amp; Jaarbudgetten
+                        <i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten per Jaar
                     </h4>
-                    <div class="flex gap-2">
-                        <input type="number" id="newYearInput" placeholder="bijv. 2028" class="w-32 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
-                        <input type="number" id="newYearBudgetInput" placeholder="Budget bedrag (€)..." class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
-                        <button onclick="addNewYearSetting()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Jaar Toevoegen</button>
-                    </div>
-                    
-                    <div class="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2">
-                        <table class="w-full text-xs text-left">
-                            <thead class="bg-slate-100 font-semibold text-slate-600 border-b border-slate-200">
-                                <tr>
-                                    <th class="p-2">Jaartal</th>
-                                    <th class="p-2">Totaal Budget (€)</th>
-                                    <th class="p-2 text-right">Opslaan</th>
-                                </tr>
-                            </thead>
-                            <tbody id="budgetSettingsTableBody" class="divide-y divide-slate-100">
-                                <!-- Dynamic -->
-                            </tbody>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <tbody id="budgetSettingsTableBody" class="divide-y divide-slate-200"></tbody>
                         </table>
                     </div>
+                    <div class="pt-2 border-t border-slate-200 flex gap-2 items-center">
+                        <input type="number" id="newYearInput" placeholder="Jaartal (bijv. 2028)" class="w-32 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
+                        <input type="number" id="newYearBudgetInput" placeholder="Budget (€)" class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
+                        <button onclick="addNewYearSetting()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Jaar Toevoegen</button>
+                    </div>
                 </div>
-            </div>
-
-            <div class="p-4 bg-slate-50 border-t border-slate-200/80 flex justify-end">
-                <button type="button" onclick="closeSettingsModal()" class="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors">
-                    Gereed
-                </button>
             </div>
         </div>
     </div>
 
-    <!-- Export & Import Report Modal -->
+    <!-- Report / Export & Import Modal -->
     <div id="reportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-100 my-8">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-100 my-8">
             <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
                 <div class="flex items-center space-x-3">
-                    <div class="bg-emerald-500 p-2 rounded-xl text-white">
+                    <div class="bg-brand-500 p-2 rounded-xl text-white">
                         <i class="fa-solid fa-file-excel"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-base">Rapportage &amp; Excel Import/Export</h3>
-                        <p class="text-xs text-slate-400">Exporteer overzichten of importeer nieuwe bedrijven uit Excel</p>
+                        <h3 class="font-bold text-base">Rapportage, Export &amp; Import</h3>
+                        <p class="text-xs text-slate-400">Exporteer gegevens naar Excel of voeg nieuwe bedrijven toe via Excel</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeReportModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
@@ -542,47 +483,28 @@
                 </button>
             </div>
 
-            <div class="p-6 space-y-6">
-                <!-- Excel Export Section -->
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
-                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-download text-emerald-600"></i>
-                        Exporteer Huidig Overzicht
-                    </h4>
-                    <p class="text-xs text-slate-500">Download direct een XLSX spreadsheet van het actieve jaar <strong class="lbl-year">2026</strong> met contract- en extra kosten.</p>
-                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-2 shadow">
-                        <i class="fa-solid fa-file-excel"></i>
-                        <span>Download Excel Rapport (.xlsx)</span>
+            <div class="p-6 space-y-4">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase">Gegevens Exporteren</h4>
+                    <p class="text-xs text-slate-500">Download het volledige contractenoverzicht van het actieve jaar naar Excel.</p>
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel"></i> Exporteer Huidig Jaar naar Excel
                     </button>
                 </div>
 
-                <!-- Excel Import Section -->
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
-                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-file-import text-brand-600"></i>
-                        Bedrijven Importeren uit Excel / CSV
-                    </h4>
-                    <p class="text-xs text-slate-500">Download eerst het sjabloon, vul je gegevens in en upload het bestand. Dubbele bedrijven (op basis van bedrijfsnaam) worden automatisch overgeslagen.</p>
-                    
-                    <div class="flex flex-wrap gap-3 pt-1">
-                        <button onclick="downloadExcelTemplate()" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-2">
-                            <i class="fa-solid fa-circle-down text-brand-500"></i>
-                            <span>Voorbeeld Excel (.xlsx) Downloaden</span>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase">Bedrijven Importeren via Excel</h4>
+                    <p class="text-xs text-slate-500">Download eerst het sjabloon, vul het in en upload het hieronder om snel meerdere contracten toe te voegen.</p>
+                    <div class="flex gap-2">
+                        <button onclick="downloadExcelTemplate()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors">
+                            <i class="fa-solid fa-download mr-1"></i> Download Sjabloon
                         </button>
-
-                        <label class="bg-brand-600 hover:bg-brand-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center gap-2 shadow cursor-pointer">
-                            <i class="fa-solid fa-upload"></i>
-                            <span>Excel Uploaden &amp; Importeren</span>
-                            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importExcelFile(event)" class="hidden">
+                        <label class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5">
+                            <i class="fa-solid fa-upload"></i> Upload Ingevuld Sjabloon
+                            <input type="file" accept=".xlsx, .xls" onchange="importExcelFile(event)" class="hidden">
                         </label>
                     </div>
                 </div>
-            </div>
-
-            <div class="p-4 bg-slate-50 border-t border-slate-200/80 flex justify-end">
-                <button type="button" onclick="closeReportModal()" class="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors">
-                    Sluiten
-                </button>
             </div>
         </div>
     </div>
@@ -594,7 +516,6 @@
         const SUPABASE_KEY = 'sb_publishable_5DLJrsERiTy8GYmjE4X1Zg_Qbk8XHRz';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Default Master Application State
         let appData = {
             activeYear: new Date().getFullYear(),
             settings: {
@@ -621,7 +542,6 @@
             try {
                 syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Laden...';
                 
-                // Haal specifiek rij met id 1 op
                 const { data, error } = await supabaseClient
                     .from('app_data')
                     .select('*')
@@ -633,7 +553,6 @@
                 if (data && data.payload) {
                     appData = { ...appData, ...data.payload };
                 } else {
-                    // Als rij 1 mist, voeg hem toe
                     await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
                 }
 
@@ -643,7 +562,6 @@
                 syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
             }
 
-            // Ensure current year is in list
             const currentYear = new Date().getFullYear();
             if (!appData.settings.years.includes(currentYear)) {
                 appData.settings.years.push(currentYear);
@@ -677,7 +595,6 @@
                 if (syncEl) {
                     syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Opslaan mislukt';
                 }
-                alert('Fout bij opslaan in de cloud. Controleer je internetverbinding.');
             }
         }
 
@@ -745,10 +662,11 @@
             const curYear = appData.activeYear;
             const budget = appData.settings.budgets[curYear] || 0;
 
-            let totalContractCosts = 0;
-            let totalExtraCosts = 0;
             let activeCount = 0;
             let inactiveCount = 0;
+
+            let mainFixedContractCosts = 0;
+            let mainFixedExtraCosts = 0;
 
             const categoryTotals = {};
             appData.settings.categories.forEach(cat => categoryTotals[cat] = 0);
@@ -762,20 +680,25 @@
 
                 if (comp.active !== false) {
                     const costs = calculateCompanyYearlyCosts(comp, curYear);
-                    totalContractCosts += costs.contractCost;
-                    totalExtraCosts += costs.extraCost;
-
                     const cat = comp.category || 'Overig';
+                    
+                    // Grafiek en categorie-totalen tonen alle categorieën
                     categoryTotals[cat] = (categoryTotals[cat] || 0) + costs.totalCost;
+
+                    // KPI's (Totale Kosten & Resterend Budget) rekenen alleen op Fixed en Fixed extra
+                    if (cat === 'Fixed' || cat === 'Fixed extra') {
+                        mainFixedContractCosts += costs.contractCost;
+                        mainFixedExtraCosts += costs.extraCost;
+                    }
                 }
             });
 
-            const totalCosts = totalContractCosts + totalExtraCosts;
-            const remainingBudget = budget - totalCosts;
+            const mainFixedTotalCosts = mainFixedContractCosts + mainFixedExtraCosts;
+            const remainingBudget = budget - mainFixedTotalCosts;
 
             document.getElementById('kpiBudget').textContent = formatCurrency(budget);
-            document.getElementById('kpiCosts').textContent = formatCurrency(totalCosts);
-            document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(totalContractCosts)} | Extra: ${formatCurrency(totalExtraCosts)}`;
+            document.getElementById('kpiCosts').textContent = formatCurrency(mainFixedTotalCosts);
+            document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(mainFixedContractCosts)} | Extra: ${formatCurrency(mainFixedExtraCosts)}`;
 
             const remEl = document.getElementById('kpiRemaining');
             remEl.textContent = formatCurrency(remainingBudget);
@@ -1153,7 +1076,7 @@
                             <input type="checkbox" id="yr-verified-${yr}" onchange="toggleYearVerified('${yr}', this.checked)" ${yrData.verified ? 'checked' : ''} class="inp-editable rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
                             <label for="yr-verified-${yr}" class="font-bold text-sm text-slate-800 cursor-pointer">Jaar ${yr}</label>
                         </div>
-                        <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Financiële gegegevens</span>
+                        <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Financiële gegevens</span>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
