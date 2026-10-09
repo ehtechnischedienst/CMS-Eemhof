@@ -620,15 +620,14 @@
             refreshDashboard();
         }
 
-        function calculateCompanyYearlyCosts(company, year) {
-            let totalContractCost = 0;
-            let totalExtraCost = 0;
+        function calculateCompanyYearlyCosts(company, year, categoryFilter = 'ALL') {
+            let matchedContractCost = 0;
+            let matchedExtraCost = 0;
 
             const targetYear = parseInt(year, 10);
             const prevYear = targetYear - 1;
 
             if (company.yearlyData) {
-                // Controleer doeljaar (zowel getal als string)
                 const curData = company.yearlyData[targetYear] || company.yearlyData[String(targetYear)];
                 if (curData) {
                     const rawAmt = parseFloat(curData.contractAmount) || 0;
@@ -636,49 +635,53 @@
                     if (curData.yearType === 'Kalenderjaar') {
                         contractFactor = 9 / 12;
                     }
-                    totalContractCost += rawAmt * contractFactor;
 
+                    // 1. Check of het hoofdcontract overeenkomt met het filter
+                    const mainCat = company.category || 'Fixed';
+                    const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
+                    if (mainMatches) {
+                        matchedContractCost += rawAmt * contractFactor;
+                    }
+
+                    // 2. Check de extra kosten regels
                     if (Array.isArray(curData.extraCosts)) {
                         curData.extraCosts.forEach(ex => {
                             const exAmt = parseFloat(ex.amount) || 0;
-                            // Als de categorie 'Fixed extra' is -> ALTIJD 100% (factor 1)
-                            // Anders (bijv. bij Fixed) -> volgt het contracttype (factor contractFactor)
-                            if (ex.category === 'Fixed extra') {
-                                totalExtraCost += exAmt;
-                            } else {
-                                totalExtraCost += exAmt * contractFactor;
+                            const exCat = ex.category || 'Overig';
+                            const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
+
+                            if (exMatches) {
+                                // 'Fixed extra' telt altijd voor 100% mee, overige volgen het contracttype
+                                if (exCat === 'Fixed extra') {
+                                    matchedExtraCost += exAmt;
+                                } else {
+                                    matchedExtraCost += exAmt * contractFactor;
+                                }
                             }
                         });
                     }
                 }
 
-                // Controleer vorig jaar voor de 3/12 overstroming bij Kalenderjaar
+                // Overloop vanuit vorig jaar bij Kalenderjaar voor het hoofdcontract
                 const prevData = company.yearlyData[prevYear] || company.yearlyData[String(prevYear)];
                 if (prevData) {
                     const prevAmt = parseFloat(prevData.contractAmount) || 0;
                     if (prevData.yearType === 'Kalenderjaar') {
-                        totalContractCost += prevAmt * (3 / 12);
-                    }
-
-                    if (Array.isArray(prevData.extraCosts)) {
-                        prevData.extraCosts.forEach(ex => {
-                            const exAmt = parseFloat(ex.amount) || 0;
-                            // Ook voor de overloop vanuit vorig jaar geldt: Fixed extra telt niet mee in de 3/12 split van het contract, 
-                            // of als het fixed extra is valt het in het jaar zelf (tenzij het reguliere extra kosten zijn).
-                            // Maar omdat extra kosten gekoppeld zijn aan het jaar waarin ze zijn ingevoerd, tellen we extra kosten van vorig jaar hier niet mee voor het doeljaar, 
-                            // behalve als ze via de kalenderjaar-splitsing lopen. Laten we ze strikt per jaar handhaven:
-                        });
+                        const mainCat = company.category || 'Fixed';
+                        const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
+                        if (mainMatches) {
+                            matchedContractCost += prevAmt * (3 / 12);
+                        }
                     }
                 }
             }
 
             return {
-                contractCost: totalContractCost,
-                extraCost: totalExtraCost,
-                totalCost: totalContractCost + totalExtraCost
+                contractCost: matchedContractCost,
+                extraCost: matchedExtraCost,
+                totalCost: matchedContractCost + matchedExtraCost
             };
         }
-
         function refreshDashboard() {
             const curYear = appData.activeYear;
             const budget = appData.settings.budgets[curYear] || 0;
@@ -895,7 +898,7 @@
 
             filteredCompanies.forEach(comp => {
                 const isSelected = selectedCompanyIds.has(comp.id);
-                const costs = calculateCompanyYearlyCosts(comp, curYear);
+                const costs = calculateCompanyYearlyCosts(comp, curYear, catVal);
                 
                 // Vang zowel getal als string varianten van het jaartal op in yearlyData
                 const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
