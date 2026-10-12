@@ -1122,12 +1122,20 @@ const filteredCompanies = appData.companies.filter(comp => {
                 document.getElementById('inpCompStartDate').value = company.startDate || '';
                 document.getElementById('inpCompDuration').value = company.durationMonths || 12;
                 document.getElementById('inpCompCompulsory').value = company.compulsory || 'Nee';
+                                
+                // Laad de snelkoppelingen in
+                document.getElementById('inpLinkContract').value = company.linkContract || '';
+                document.getElementById('inpLinkReport').value = company.linkReport || '';
+                renderShortcutButtons(company.linkContract, company.linkReport);
 
                 renderYearlyBreakdownCards(company.yearlyData || {});
             } else {
                 document.getElementById('editCompanyId').value = '';
                 document.getElementById('modalCompanyNameTitle').textContent = 'Nieuw Bedrijf Opvoeren';
                 document.getElementById('inpCompActive').value = 'true';
+                document.getElementById('inpLinkContract').value = '';
+                document.getElementById('inpLinkReport').value = '';
+                renderShortcutButtons('', '');
                 renderYearlyBreakdownCards({});
             }
 
@@ -1143,7 +1151,33 @@ const filteredCompanies = appData.companies.filter(comp => {
                 modal.classList.remove('flex');
             }
         }
+function renderShortcutButtons(contractUrl, reportUrl) {
+            const containerContract = document.getElementById('btnContainerContract');
+            const containerReport = document.getElementById('btnContainerReport');
+            if (!containerContract || !containerReport) return;
 
+            // Contract knop
+            if (contractUrl && contractUrl.trim() !== '') {
+                containerContract.innerHTML = `
+                    <a href="${escapeHtml(contractUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-semibold rounded-lg border border-brand-200 transition-colors">
+                        <i class="fa-solid fa-external-link-alt text-[10px]"></i> Open Contract
+                    </a>
+                `;
+            } else {
+                containerContract.innerHTML = `<span class="text-[11px] text-slate-400 italic">Geen link ingesteld</span>`;
+            }
+
+            // Rapport knop
+            if (reportUrl && reportUrl.trim() !== '') {
+                containerReport.innerHTML = `
+                    <a href="${escapeHtml(reportUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 transition-colors">
+                        <i class="fa-solid fa-external-link-alt text-[10px]"></i> Open Rapport
+                    </a>
+                `;
+            } else {
+                containerReport.innerHTML = `<span class="text-[11px] text-slate-400 italic">Geen link ingesteld</span>`;
+            }
+        }
         function setCompanyModalEditState(isEditing) {
             const inputs = document.querySelectorAll('.inp-editable');
             inputs.forEach(inp => {
@@ -1357,6 +1391,11 @@ const filteredCompanies = appData.companies.filter(comp => {
                 department: document.getElementById('inpCompDepartment').value,
                 contractType: document.getElementById('inpCompContractType').value,
                 startDate: document.getElementById('inpCompStartDate').value,
+                
+                // Sla de snelkoppelingen op
+                linkContract: document.getElementById('inpLinkContract').value.trim(),
+                linkReport: document.getElementById('inpLinkReport').value.trim(),
+
                 durationMonths: parseInt(document.getElementById('inpCompDuration').value, 10) || 12,
                 compulsory: document.getElementById('inpCompCompulsory').value,
                 yearlyData: yearlyData
