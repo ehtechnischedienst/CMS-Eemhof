@@ -365,10 +365,6 @@
                                 <option value="Ja">Ja</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Start Contractdatum</label>
-                            <input type="date" id="inpCompStartDate" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
-                        </div>
 
                         <!-- Snelkoppelingen (Contract & Rapport) -->
                         <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-slate-200/60 mt-2">
@@ -921,7 +917,7 @@
                 const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
 
                 // Controleer uitsluitend of het vinkje voor dit jaar in het bewerkscherm aanstaat
-            const isYearActiveForCompany = yearInfo && (yearInfo.verified === true || yearInfo.verified === 'true');
+                const isYearActiveForCompany = yearInfo && (yearInfo.verified === true || yearInfo.verified === 'true');
 
                 const poNumbers = yearInfo.poNumber || '-';
                 const yearType = yearInfo.yearType || 'Boekjaar';
@@ -1151,7 +1147,7 @@ const filteredCompanies = appData.companies.filter(comp => {
                 modal.classList.remove('flex');
             }
         }
-function renderShortcutButtons(contractUrl, reportUrl) {
+        function renderShortcutButtons(contractUrl, reportUrl) {
             const containerContract = document.getElementById('btnContainerContract');
             const containerReport = document.getElementById('btnContainerReport');
             if (!containerContract || !containerReport) return;
@@ -1392,7 +1388,7 @@ function renderShortcutButtons(contractUrl, reportUrl) {
                 contractType: document.getElementById('inpCompContractType').value,
                 startDate: document.getElementById('inpCompStartDate').value,
                 
-                // Sla de snelkoppelingen op
+                // Sla de snelkoppelingen op (gehaald uit de invoervelden)
                 linkContract: document.getElementById('inpLinkContract').value.trim(),
                 linkReport: document.getElementById('inpLinkReport').value.trim(),
 
