@@ -902,12 +902,8 @@
                 
                 const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
 
-                // Controleer of dit jaar actief/ingevuld is OF dat het vinkje (verified) in het bewerkscherm aanstaat
-                const isYearActiveForCompany = yearInfo && (
-                    yearInfo.verified === true ||
-                    (parseFloat(yearInfo.contractAmount) || 0) > 0 || 
-                    (Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0)
-                );
+                // Controleer uitsluitend of het vinkje voor dit jaar in het bewerkscherm aanstaat
+            const isYearActiveForCompany = yearInfo && (yearInfo.verified === true || yearInfo.verified === 'true');
 
                 const poNumbers = yearInfo.poNumber || '-';
                 const yearType = yearInfo.yearType || 'Boekjaar';
