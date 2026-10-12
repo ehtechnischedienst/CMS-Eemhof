@@ -900,12 +900,16 @@
             const isSelected = selectedCompanyIds.has(comp.id);
             const costs = calculateCompanyYearlyCosts(comp, curYear, catVal);
             
-            // Vang zowel getal als string varianten van het jaartal op in yearlyData
+            // Haal de data op voor het huidige actieve jaar
             const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
 
-            // Controleer of dit jaar actief/ingevuld is voor dit bedrijf
+            // Controleer feitelijk of het jaartal-vinkje aan staat OF dat er bedragen/kosten zijn
             const isYearActiveForCompany = yearInfo && (
-                parseFloat(yearInfo.contractAmount) > 0 || 
+                yearInfo.active === true || 
+                yearInfo.active === 'true' || 
+                yearInfo.enabled === true || 
+                yearInfo.checked === true ||
+                (parseFloat(yearInfo.contractAmount) || 0) > 0 || 
                 (Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0)
             );
 
