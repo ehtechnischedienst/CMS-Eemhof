@@ -896,57 +896,58 @@
 
             // 2. Doorloop de gefilterde bedrijven en bouw de tabelrijen
             filteredCompanies.forEach(comp => {
-                const isSelected = selectedCompanyIds.has(comp.id);
-                const costs = calculateCompanyYearlyCosts(comp, curYear, catVal);
-                
-                const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
+            const isSelected = selectedCompanyIds.has(comp.id);
+            const costs = calculateCompanyYearlyCosts(comp, curYear);
+            
+            const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
 
-                // Controleer of het jaartal-vinkje aan staat OF dat er bedragen/kosten zijn
-                const isYearActiveForCompany = yearInfo && (
-                    yearInfo.active === true || 
-                    yearInfo.active === 'true' || 
-                    yearInfo.enabled === true || 
-                    yearInfo.checked === true ||
-                    (parseFloat(yearInfo.contractAmount) || 0) > 0 || 
-                    (Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0)
-                );
+            // Controleer of dit jaar actief/ingevuld is voor dit bedrijf
+            // (Bijvoorbeeld of er een contractbedrag is ingevuld of dat het jaar expliciet aan staat)
+            const isYearActiveForCompany = yearInfo && (
+                parseFloat(yearInfo.contractAmount) > 0 || 
+                (Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0) ||
+                yearInfo.active === true || 
+                yearInfo.enabled === true
+            );
 
-                const poNumbers = yearInfo.poNumber || '-';
-                const yearType = yearInfo.yearType || 'Boekjaar';
-                const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
+            const poNumbers = yearInfo.poNumber || '-';
+            const yearType = yearInfo.yearType || 'Boekjaar';
+            const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
 
-                const tr = document.createElement('tr');
-                
-                let rowBgClass = 'hover:bg-slate-50';
-                if (comp.active === false) {
-                    rowBgClass = 'opacity-50 bg-slate-50';
-                } else if (isYearActiveForCompany) {
-                    rowBgClass = 'bg-emerald-50/70 hover:bg-emerald-100/70';
-                }
+            const tr = document.createElement('tr');
+            
+            // Bepaal de achtergrondkleur: als inactief dan grijs, als het jaar actief is dan groen, anders normaal
+            let rowBgClass = 'hover:bg-slate-50';
+            if (comp.active === false) {
+                rowBgClass = 'opacity-50 bg-slate-50';
+            } else if (isYearActiveForCompany) {
+                rowBgClass = 'bg-emerald-50/70 hover:bg-emerald-100/70'; // Groene markering voor actieve contracten in dit jaar
+            }
 
-                tr.className = `transition-colors ${rowBgClass}`;
-                tr.innerHTML = `
-                    <td class="p-3 text-center">
-                        <input type="checkbox" onchange="toggleSelectCompany('${comp.id}', this.checked)" ${isSelected ? 'checked' : ''} class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
-                    </td>
-                    <td class="p-3 font-bold text-brand-600 hover:text-brand-800 cursor-pointer" onclick="openCompanyModal('${comp.id}')">
-                        ${escapeHtml(comp.name)}
-                        ${comp.active === false ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">Inactief</span>' : ''}
-                    </td>
-                    <td class="p-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(comp.description || '')}">${escapeHtml(comp.description || '-')}</td>
-                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
-                    <td class="p-3 text-slate-600">${escapeHtml(yearType)}</td>
-                    <td class="p-3 text-right font-bold text-slate-900">${formatCurrency(costs.totalCost)}</td>
-                    <td class="p-3 text-slate-600 font-mono text-[11px]">${escapeHtml(poNumbers)}</td>
-                    <td class="p-3 text-center">
-                        ${hasExtra ? `
-                            <button onclick="toggleExtraRow('${comp.id}')" class="text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md font-semibold transition-colors">
-                                <i class="fa-solid fa-chevron-down mr-1"></i> Extra (${yearInfo.extraCosts.length})
-                            </button>
-                        ` : '<span class="text-slate-300">-</span>'}
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            tr.className = `transition-colors ${rowBgClass}`;
+            tr.innerHTML = `
+                <td class="p-3 text-center">
+                    <input type="checkbox" onchange="toggleSelectCompany('${comp.id}', this.checked)" ${isSelected ? 'checked' : ''} class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                </td>
+                <td class="p-3 font-bold text-brand-600 hover:text-brand-800 cursor-pointer" onclick="openCompanyModal('${comp.id}')">
+                    ${escapeHtml(comp.name)}
+                    ${comp.active === false ? '<span class="ml-1 text-[10px] px-1.5 py-0.2 bg-slate-200 text-slate-600 rounded">Inactief</span>' : ''}
+                </td>
+                <td class="p-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(comp.description || '')}">${escapeHtml(comp.description || '-')}</td>
+                <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
+                <td class="p-3 text-slate-600">${escapeHtml(yearType)}</td>
+                <td class="p-3 text-right font-bold text-slate-900">${formatCurrency(costs.totalCost)}</td>
+                <td class="p-3 text-slate-600 font-mono text-[11px]">${escapeHtml(poNumbers)}</td>
+                <td class="p-3 text-center">
+                    ${hasExtra ? `
+                        <button onclick="toggleExtraRow('${comp.id}')" class="text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md font-semibold transition-colors">
+                            <i class="fa-solid fa-chevron-down mr-1"></i> Extra (${yearInfo.extraCosts.length})
+                        </button>
+                    ` : '<span class="text-slate-300">-</span>'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+            // ... (rest van de extra rij logica)
 
                 if (hasExtra) {
                     const subTr = document.createElement('tr');
