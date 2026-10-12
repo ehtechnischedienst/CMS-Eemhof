@@ -365,6 +365,24 @@
                                 <option value="Ja">Ja</option>
                             </select>
                         </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Start Contractdatum</label>
+                            <input type="date" id="inpCompStartDate" class="inp-editable w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20" disabled>
+                        </div>
+
+                        <!-- Snelkoppelingen (Contract & Rapport) -->
+                        <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-slate-200/60 mt-2">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-600 mb-1"><i class="fa-solid fa-link text-brand-500 mr-1"></i> Snelkoppeling Contract (URL)</label>
+                                <input type="url" id="inpLinkContract" placeholder="https://..." class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 mb-2" disabled>
+                                <div id="btnContainerContract"></div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-600 mb-1"><i class="fa-solid fa-link text-brand-500 mr-1"></i> Snelkoppeling Rapport (URL)</label>
+                                <input type="url" id="inpLinkReport" placeholder="https://..." class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 mb-2" disabled>
+                                <div id="btnContainerReport"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
