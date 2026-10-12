@@ -394,7 +394,11 @@
                 </div>
 
                 <div class="flex justify-between items-center pt-4 border-t border-slate-100">
-                    <span class="text-xs text-slate-400">Bedrijven kunnen niet verwijderd worden (alleen op inactief gezet).</span>
+                    <button type="button" id="btnDeleteCompany" onclick="deleteCurrentCompany()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold transition-colors hidden flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i> Verwijder Bedrijf
+                    </button>
+                    <span id="deleteNoticeText" class="text-xs text-slate-400">Bedrijven kunnen niet verwijderd worden (alleen op inactief gezet).</span>
+                    
                     <div class="flex items-center space-x-2">
                         <button type="button" onclick="closeCompanyModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors">
                             Sluiten
@@ -650,14 +654,12 @@
                         contractFactor = 9 / 12;
                     }
 
-                    // 1. Hoofdcontract telt alleen mee als de hoofdcategorie van het bedrijf overeenkomt met het filter (of als filter op 'ALL' staat)
                     const mainCat = company.category || 'Fixed';
                     const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
                     if (mainMatches) {
                         matchedContractCost += rawAmt * contractFactor;
                     }
 
-                    // 2. Extra kosten: tel EXLUSIEF de regels op die matchen met het filter
                     if (Array.isArray(curData.extraCosts)) {
                         curData.extraCosts.forEach(ex => {
                             const exAmt = parseFloat(ex.amount) || 0;
@@ -665,7 +667,6 @@
                             const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
 
                             if (exMatches) {
-                                // 'Fixed extra' telt altijd voor 100% mee, overige extra kosten volgen het contracttype
                                 if (exCat === 'Fixed extra') {
                                     matchedExtraCost += exAmt;
                                 } else {
@@ -676,7 +677,6 @@
                     }
                 }
 
-                // Overloop vanuit vorig jaar bij Kalenderjaar voor het hoofdcontract
                 const prevData = company.yearlyData[prevYear] || company.yearlyData[String(prevYear)];
                 if (prevData) {
                     const prevAmt = parseFloat(prevData.contractAmount) || 0;
@@ -696,6 +696,7 @@
                 totalCost: matchedContractCost + matchedExtraCost
             };
         }
+
         function refreshDashboard() {
             const curYear = appData.activeYear;
             const budget = appData.settings.budgets[curYear] || 0;
@@ -719,10 +720,8 @@
                     const costs = calculateCompanyYearlyCosts(comp, curYear);
                     const cat = comp.category || 'Overig';
                     
-                    // 1. De grafiek en categorie-totalen tonen WEL alle categorieën
                     categoryTotals[cat] = (categoryTotals[cat] || 0) + costs.totalCost;
 
-                    // 2. De KPI's (Totale Kosten & Resterend Budget) tellen ALLEEN op bij Fixed en Fixed extra
                     if (cat === 'Fixed' || cat === 'Fixed extra') {
                         totalContractCosts += costs.contractCost;
                         totalExtraCosts += costs.extraCost;
@@ -730,7 +729,6 @@
                 }
             });
 
-            // Totale kosten voor de KPI zijn nu strikt de som van Fixed en Fixed extra
             const totalCosts = totalContractCosts + totalExtraCosts;
             const remainingBudget = budget - totalCosts;
 
@@ -846,12 +844,9 @@
         }
 
         function onCategoryFilterChange() {
-            // Maak de selectie ALTIJD direct leeg bij een wissel van categorie
             selectedCompanyIds.clear();
             const masterCheckbox = document.getElementById('masterCheckbox');
             if (masterCheckbox) masterCheckbox.checked = false;
-            
-            // Voer daarna de normale tabelweergave uit
             renderCompanyTable();
         }
 
@@ -874,8 +869,6 @@
                 if (statusVal === 'ACTIVE' && comp.active === false) return false;
                 if (statusVal === 'INACTIVE' && comp.active !== false) return false;
 
-                // Categorie filter: check of het bedrijf zelf deze categorie heeft
-                // OF dat er in de extra kosten van het actieve jaar deze categorie verborgen zit!
                 if (catVal !== 'ALL') {
                     const mainCatMatch = (comp.category === catVal);
                     const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
@@ -889,7 +882,6 @@
                 return true;
             });
 
-            // Master checkbox status bijwerken
             const masterCheckbox = document.getElementById('masterCheckbox');
             if (masterCheckbox && filteredCompanies.length > 0) {
                 const allVisibleSelected = filteredCompanies.every(comp => selectedCompanyIds.has(comp.id));
@@ -916,12 +908,11 @@
                 
                 const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
 
-                // Controleer uitsluitend of het vinkje voor dit jaar in het bewerkscherm aanstaat
                 const isYearActiveForCompany = yearInfo && (yearInfo.verified === true || yearInfo.verified === 'true');
 
                 const poNumbers = yearInfo.poNumber || '-';
                 const yearType = yearInfo.yearType || 'Boekjaar';
-                const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length.toString() > 0;
+                const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
 
                 const tr = document.createElement('tr');
                 
@@ -929,7 +920,7 @@
                 if (comp.active === false) {
                     rowBgClass = 'opacity-50 bg-slate-50';
                 } else if (isYearActiveForCompany) {
-                    rowBgClass = 'bg-emerald-100/80 hover:bg-emerald-200/75'; // Groene markering voor actieve/aangevinkte jaren
+                    rowBgClass = 'bg-emerald-100/80 hover:bg-emerald-200/75';
                 }
 
                 tr.className = `transition-colors ${rowBgClass}`;
@@ -986,6 +977,7 @@
 
             updateSelectedTotal();
         }
+
         function toggleExtraRow(compId) {
             const row = document.getElementById(`extra-row-${compId}`);
             if (row) {
@@ -1002,32 +994,30 @@
             updateSelectedTotal();
         }
 
-      function toggleMasterCheckbox(checked) {
-            // Pas de bestaande selecteer-alles functie aan met deze filterlogica:
-const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
-const catVal = document.getElementById('filterCategory').value;
-const statusVal = document.getElementById('filterStatus').value;
-const curYear = appData.activeYear;
+        function toggleMasterCheckbox(checked) {
+            const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+            const catVal = document.getElementById('filterCategory').value;
+            const statusVal = document.getElementById('filterStatus').value;
+            const curYear = appData.activeYear;
 
-const filteredCompanies = appData.companies.filter(comp => {
-    const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
-    const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
-    if (!nameMatch && !descMatch) return false;
+            const filteredCompanies = appData.companies.filter(comp => {
+                const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
+                const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
+                if (!nameMatch && !descMatch) return false;
 
-    if (statusVal === 'ACTIVE' && comp.active === false) return false;
-    if (statusVal === 'INACTIVE' && comp.active !== false) return false;
+                if (statusVal === 'ACTIVE' && comp.active === false) return false;
+                if (statusVal === 'INACTIVE' && comp.active !== false) return false;
 
-    if (catVal !== 'ALL') {
-        const mainCatMatch = (comp.category === catVal);
-        const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
-        const hasExtraCatMatch = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.some(ex => ex.category === catVal);
+                if (catVal !== 'ALL') {
+                    const mainCatMatch = (comp.category === catVal);
+                    const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
+                    const hasExtraCatMatch = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.some(ex => ex.category === catVal);
 
-        if (!mainCatMatch && !hasExtraCatMatch) return false;
-    }
-    return true;
-});
+                    if (!mainCatMatch && !hasExtraCatMatch) return false;
+                }
+                return true;
+            });
 
-            // Vink alle zichtbare/gefilterde bedrijven aan of uit
             filteredCompanies.forEach(comp => {
                 if (checked) {
                     selectedCompanyIds.add(comp.id);
@@ -1038,13 +1028,12 @@ const filteredCompanies = appData.companies.filter(comp => {
 
             renderCompanyTable();
         }
+
         function selectAllCompanies(selectAll) {
             const master = document.getElementById('masterCheckbox');
             if (master) master.checked = selectAll;
 
             if (!selectAll) {
-                // Als er op 'Demarkeer Alles' wordt geklikt, wissen we voor de zekerheid 
-                // direct ALLE huidige zichtbare gefilterde items uit het geheugen
                 const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
                 const catVal = document.getElementById('filterCategory').value;
                 const statusVal = document.getElementById('filterStatus').value;
@@ -1064,17 +1053,17 @@ const filteredCompanies = appData.companies.filter(comp => {
 
             toggleMasterCheckbox(selectAll);
         }
+
         function updateSelectedTotal() {
             let total = 0;
             let contractTotal = 0;
             let extraTotal = 0;
             const curYear = appData.activeYear;
-            const catVal = document.getElementById('filterCategory').value; // Haal het actieve categorie-filter op
+            const catVal = document.getElementById('filterCategory').value;
 
             selectedCompanyIds.forEach(id => {
                 const comp = appData.companies.find(c => c.id === id);
                 if (comp) {
-                    // Geef catVal mee zodat alleen de kosten van dat filter worden berekend!
                     const costs = calculateCompanyYearlyCosts(comp, curYear, catVal);
                     contractTotal += costs.contractCost;
                     extraTotal += costs.extraCost;
@@ -1106,6 +1095,19 @@ const filteredCompanies = appData.companies.filter(comp => {
 
                 document.getElementById('inpCompName').value = company.name || '';
                 document.getElementById('inpCompActive').value = company.active !== false ? 'true' : 'false';
+                
+                const btnDelete = document.getElementById('btnDeleteCompany');
+                const deleteNotice = document.getElementById('deleteNoticeText');
+                if (btnDelete && deleteNotice) {
+                    if (company.active === false) {
+                        btnDelete.classList.remove('hidden');
+                        deleteNotice.classList.add('hidden');
+                    } else {
+                        btnDelete.classList.add('hidden');
+                        deleteNotice.classList.remove('hidden');
+                    }
+                }
+
                 document.getElementById('inpContractName').value = company.contractName || '';
                 document.getElementById('inpCompPhone').value = company.phone || '';
                 document.getElementById('inpCompEmail').value = company.email || '';
@@ -1119,7 +1121,6 @@ const filteredCompanies = appData.companies.filter(comp => {
                 document.getElementById('inpCompDuration').value = company.durationMonths || 12;
                 document.getElementById('inpCompCompulsory').value = company.compulsory || 'Nee';
                                 
-                // Laad de snelkoppelingen in
                 document.getElementById('inpLinkContract').value = company.linkContract || '';
                 document.getElementById('inpLinkReport').value = company.linkReport || '';
                 renderShortcutButtons(company.linkContract, company.linkReport);
@@ -1129,6 +1130,12 @@ const filteredCompanies = appData.companies.filter(comp => {
                 document.getElementById('editCompanyId').value = '';
                 document.getElementById('modalCompanyNameTitle').textContent = 'Nieuw Bedrijf Opvoeren';
                 document.getElementById('inpCompActive').value = 'true';
+
+                const btnDelete = document.getElementById('btnDeleteCompany');
+                const deleteNotice = document.getElementById('deleteNoticeText');
+                if (btnDelete) btnDelete.classList.add('hidden');
+                if (deleteNotice) deleteNotice.classList.remove('hidden');
+
                 document.getElementById('inpLinkContract').value = '';
                 document.getElementById('inpLinkReport').value = '';
                 renderShortcutButtons('', '');
@@ -1140,6 +1147,28 @@ const filteredCompanies = appData.companies.filter(comp => {
             modal.classList.add('flex');
         }
 
+        function deleteCurrentCompany() {
+            const compId = document.getElementById('editCompanyId').value;
+            if (!compId) return;
+
+            const comp = appData.companies.find(c => c.id === compId);
+            if (!comp) return;
+
+            if (comp.active !== false) {
+                alert('Alleen inactieve bedrijven kunnen worden verwijderd.');
+                return;
+            }
+
+            if (confirm(`Weet je zeker dat je het inactieve bedrijf "${comp.name}" definitief wilt verwijderen uit het systeem?`)) {
+                appData.companies = appData.companies.filter(c => c.id !== compId);
+                selectedCompanyIds.delete(compId);
+
+                saveData();
+                closeCompanyModal();
+                refreshDashboard();
+            }
+        }
+
         function closeCompanyModal() {
             const modal = document.getElementById('companyModal');
             if (modal) {
@@ -1147,12 +1176,12 @@ const filteredCompanies = appData.companies.filter(comp => {
                 modal.classList.remove('flex');
             }
         }
+
         function renderShortcutButtons(contractUrl, reportUrl) {
             const containerContract = document.getElementById('btnContainerContract');
             const containerReport = document.getElementById('btnContainerReport');
             if (!containerContract || !containerReport) return;
 
-            // Contract knop
             if (contractUrl && contractUrl.trim() !== '') {
                 containerContract.innerHTML = `
                     <a href="${escapeHtml(contractUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-semibold rounded-lg border border-brand-200 transition-colors">
@@ -1163,7 +1192,6 @@ const filteredCompanies = appData.companies.filter(comp => {
                 containerContract.innerHTML = `<span class="text-[11px] text-slate-400 italic">Geen link ingesteld</span>`;
             }
 
-            // Rapport knop
             if (reportUrl && reportUrl.trim() !== '') {
                 containerReport.innerHTML = `
                     <a href="${escapeHtml(reportUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 transition-colors">
@@ -1174,6 +1202,7 @@ const filteredCompanies = appData.companies.filter(comp => {
                 containerReport.innerHTML = `<span class="text-[11px] text-slate-400 italic">Geen link ingesteld</span>`;
             }
         }
+
         function setCompanyModalEditState(isEditing) {
             const inputs = document.querySelectorAll('.inp-editable');
             inputs.forEach(inp => {
@@ -1388,7 +1417,6 @@ const filteredCompanies = appData.companies.filter(comp => {
                 contractType: document.getElementById('inpCompContractType').value,
                 startDate: document.getElementById('inpCompStartDate').value,
                 
-                // Sla de snelkoppelingen op (gehaald uit de invoervelden)
                 linkContract: document.getElementById('inpLinkContract').value.trim(),
                 linkReport: document.getElementById('inpLinkReport').value.trim(),
 
