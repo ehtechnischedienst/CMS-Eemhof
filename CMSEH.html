@@ -564,7 +564,6 @@
 
                 if (data && data.payload) {
                     appData = { ...appData, ...data.payload };
-                    // Zorg ervoor dat yearVisibility bestaat voor oudere opgeslagen data
                     if (!appData.settings.yearVisibility) {
                         appData.settings.yearVisibility = {};
                         appData.settings.years.forEach(yr => appData.settings.yearVisibility[yr] = true);
@@ -589,7 +588,6 @@
             }
 
             if (!appData.activeYear || appData.settings.yearVisibility[appData.activeYear] === false) {
-                // Zoek eerste zichtbare jaar als actief jaar onzichtbaar is
                 const firstVisible = appData.settings.years.find(yr => appData.settings.yearVisibility[yr] !== false);
                 appData.activeYear = firstVisible || currentYear;
             }
@@ -626,7 +624,6 @@
             if (!select) return;
             select.innerHTML = '';
 
-            // Toon alleen jaren waarvan de zichtbaarheid niet op false staat
             const visibleYears = appData.settings.years.filter(yr => appData.settings.yearVisibility && appData.settings.yearVisibility[yr] !== false);
 
             if (visibleYears.length === 0) {
@@ -1240,6 +1237,7 @@
             typeSel.innerHTML = appData.settings.contractTypes.map(t => `<option value="${t}">${t}</option>`).join('');
         }
 
+        // Rendert uitsluitend de jaren waarvan de zichtbaarheid op 'true' staat in de bedrijfsmodal
         function renderYearlyBreakdownCards(yearlyData, defaultContractName = '') {
             const container = document.getElementById('yearlyBreakdownContainer');
             if (!container) return;
@@ -1247,7 +1245,15 @@
 
             const fallbackName = defaultContractName.trim() !== '' ? defaultContractName : 'Contract';
 
-            appData.settings.years.forEach(yr => {
+            // Filter alleen zichtbare jaren
+            const visibleYears = appData.settings.years.filter(yr => !appData.settings.yearVisibility || appData.settings.yearVisibility[yr] !== false);
+
+            if (visibleYears.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 italic">Geen jaren ingesteld of zichtbaar.</p>';
+                return;
+            }
+
+            visibleYears.forEach(yr => {
                 const yrData = yearlyData[yr] || {
                     contractAmount: 0,
                     contractItems: [],
