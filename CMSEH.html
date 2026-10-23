@@ -865,6 +865,13 @@
                 const yearType = yearInfo.yearType || 'Boekjaar';
                 const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
 
+                // Bepaal aantal contractregels voor de indicator
+                const contractCount = Array.isArray(yearInfo.contractItems) ? yearInfo.contractItems.length : (yearInfo.contractAmount > 0 ? 1 : 0);
+                let contractBadgeHtml = '';
+                if (contractCount > 1) {
+                    contractBadgeHtml = `<span class="ml-1.5 px-1.5 py-0.5 bg-brand-50 text-brand-700 border border-brand-200 rounded text-[10px] font-semibold" title="${contractCount} contractregels in ${curYear}">+${contractCount} contracten</span>`;
+                }
+
                 const tr = document.createElement('tr');
                 
                 let rowBgClass = 'hover:bg-slate-50';
@@ -880,8 +887,11 @@
                         <input type="checkbox" onchange="toggleSelectCompany('${comp.id}', this.checked)" ${isSelected ? 'checked' : ''} class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
                     </td>
                     <td class="p-3 font-bold text-brand-600 hover:text-brand-800 cursor-pointer" onclick="openCompanyModal('${comp.id}')">
-                        ${escapeHtml(comp.name)}
-                        ${comp.active === false ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">Inactief</span>' : ''}
+                        <div class="flex items-center flex-wrap gap-1">
+                            <span>${escapeHtml(comp.name)}</span>
+                            ${contractBadgeHtml}
+                            ${comp.active === false ? '<span class="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">Inactief</span>' : ''}
+                        </div>
                     </td>
                     <td class="p-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(comp.description || '')}">${escapeHtml(comp.description || '-')}</td>
                     <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
@@ -1273,7 +1283,6 @@
             });
         }
 
-        // Contractbedrag-regel met een EIGEN PO-Nummer veld
         function addContractAmountLine(yr, data = null) {
             const container = document.getElementById(`contract-items-list-${yr}`);
             if (!container) return;
@@ -1283,7 +1292,6 @@
             row.id = rowId;
             row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200/60 text-xs';
 
-            // Gebruik de actuele contractnaam indien beschikbaar
             const currentContractNameInput = document.getElementById('inpContractName')?.value?.trim();
             const defaultDesc = currentContractNameInput || 'Contract';
 
