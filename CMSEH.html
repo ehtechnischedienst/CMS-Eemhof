@@ -448,9 +448,8 @@
         </div>
     </div>
 
-    <!-- Application Logic -->
+    <!-- Application Logic & Supabase Initialization -->
     <script>
-       // Supabase Configuration
         const SUPABASE_URL = 'https://xwnbuzxbrnltxfczatrl.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_5DLJrsERiTy8GYmjE4X1Zg_Qbk8XHRz';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -459,13 +458,7 @@
             activeYear: new Date().getFullYear(),
             settings: {
                 years: [2023, 2024, 2025, 2026, 2027],
-                budgets: {
-                    2023: 100000,
-                    2024: 120000,
-                    2025: 150000,
-                    2026: 180000,
-                    2027: 200000
-                },
+                budgets: { 2023: 100000, 2024: 120000, 2025: 150000, 2026: 180000, 2027: 200000 },
                 categories: ['Fixed', 'Fixed extra', 'Hygenic', 'OOP', 'Operations', 'Cleaning', 'Safety', 'Albron', 'Zuiderzoet', 'Vervallen', 'CMO'],
                 departments: ['General', 'Technical', 'Green', 'Pool', 'Cleaning', 'Safety', 'Operations', 'Zuiderzoet', 'Albron'],
                 contractTypes: ['Collecties', 'Park', 'Vervallen']
@@ -474,7 +467,7 @@
         };
 
         let selectedCompanyIds = new Set();
-        let myCategoryChart = null;
+        let isEditMode = false;
 
         async function initSystem() {
             const syncEl = document.getElementById('syncStatus');
@@ -496,22 +489,15 @@
                 }
 
                 syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
-            } catch (e) {
-                console.error("Failed loading data from Supabase:", e);
-                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
-            }
+                syncEl.className = 'text-[11px] text-emerald-400 hidden sm:inline-block bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700';
 
-            const currentYear = new Date().getFullYear();
-            if (!appData.settings.years.includes(currentYear)) {
-                appData.settings.years.push(currentYear);
-                appData.settings.years.sort();
+                populateDropdowns();
+                renderCompanyTable();
+            } catch (err) {
+                console.error('Fout bij laden van Supabase:', err);
+                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Fout bij laden';
+                syncEl.className = 'text-[11px] text-rose-400 hidden sm:inline-block bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700';
             }
-            if (!appData.activeYear) {
-                appData.activeYear = currentYear;
-            }
-
-            populateYearDropdowns();
-            refreshDashboard();
         }
 
         async function saveDataToCloud() {
