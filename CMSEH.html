@@ -149,7 +149,7 @@
             </div>
         </div>
 
-        <!-- Chart & Analytics Section -->
+        <!-- Filter / Rekenmachine Card -->
         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-2 flex flex-col justify-between">
             <div>
                 <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
@@ -616,6 +616,7 @@
             refreshDashboard();
         }
 
+        // Berekent de totale contractkosten (rekening houdend met meerdere contractbedragen)
         function calculateCompanyYearlyCosts(company, year, categoryFilter = 'ALL') {
             let matchedContractCost = 0;
             let matchedExtraCost = 0;
@@ -626,7 +627,14 @@
             if (company.yearlyData) {
                 const curData = company.yearlyData[targetYear] || company.yearlyData[String(targetYear)];
                 if (curData) {
-                    const rawAmt = parseFloat(curData.contractAmount) || 0;
+                    // Ondersteuning voor zowel het oude enkele bedrag als meerdere contractItems
+                    let rawAmtSum = 0;
+                    if (Array.isArray(curData.contractItems) && curData.contractItems.length > 0) {
+                        rawAmtSum = curData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+                    } else {
+                        rawAmtSum = parseFloat(curData.contractAmount) || 0;
+                    }
+
                     let contractFactor = 1;
                     if (curData.yearType === 'Kalenderjaar') {
                         contractFactor = 9 / 12;
@@ -635,7 +643,7 @@
                     const mainCat = company.category || 'Fixed';
                     const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
                     if (mainMatches) {
-                        matchedContractCost += rawAmt * contractFactor;
+                        matchedContractCost += rawAmtSum * contractFactor;
                     }
 
                     if (Array.isArray(curData.extraCosts)) {
@@ -657,12 +665,18 @@
 
                 const prevData = company.yearlyData[prevYear] || company.yearlyData[String(prevYear)];
                 if (prevData) {
-                    const prevAmt = parseFloat(prevData.contractAmount) || 0;
+                    let prevAmtSum = 0;
+                    if (Array.isArray(prevData.contractItems) && prevData.contractItems.length > 0) {
+                        prevAmtSum = prevData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+                    } else {
+                        prevAmtSum = parseFloat(prevData.contractAmount) || 0;
+                    }
+
                     if (prevData.yearType === 'Kalenderjaar') {
                         const mainCat = company.category || 'Fixed';
                         const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
                         if (mainMatches) {
-                            matchedContractCost += prevAmt * (3 / 12);
+                            matchedContractCost += prevAmtSum * (3 / 12);
                         }
                     }
                 }
@@ -1161,6 +1175,7 @@
             typeSel.innerHTML = appData.settings.contractTypes.map(t => `<option value="${t}">${t}</option>`).join('');
         }
 
+        // Rendert de jaarkaarten met dynamische contractbedragen én extra kosten
         function renderYearlyBreakdownCards(yearlyData) {
             const container = document.getElementById('yearlyBreakdownContainer');
             if (!container) return;
@@ -1169,6 +1184,7 @@
             appData.settings.years.forEach(yr => {
                 const yrData = yearlyData[yr] || {
                     contractAmount: 0,
+                    contractItems: [],
                     yearType: 'Boekjaar',
                     poNumber: '',
                     verified: false,
@@ -1188,11 +1204,7 @@
                         <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Financiële gegevens</span>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                        <div>
-                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Contract Bedrag (€)</label>
-                            <input type="number" step="0.01" id="yr-amt-${yr}" value="${yrData.contractAmount || 0}" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
-                        </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Type Jaar</label>
                             <select id="yr-type-${yr}" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
@@ -1206,9 +1218,21 @@
                         </div>
                     </div>
 
+                    <!-- Contractbedragen Sectie -->
+                    <div class="bg-white/80 p-3 rounded-lg border border-slate-200/60 mb-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[11px] font-bold text-brand-700"><i class="fa-solid fa-file-contract mr-1"></i> Contract Bedragen / Onderdelen</span>
+                            <button type="button" onclick="addContractAmountLine('${yr}')" class="inp-editable text-[11px] text-brand-600 hover:text-brand-800 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Contractregel Toevoegen
+                            </button>
+                        </div>
+                        <div id="contract-items-list-${yr}" class="space-y-2"></div>
+                    </div>
+
+                    <!-- Extra Kosten Sectie -->
                     <div class="bg-white/80 p-3 rounded-lg border border-slate-200/60">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-[11px] font-bold text-slate-700">Extra Kosten Voor Jaar ${yr}</span>
+                            <span class="text-[11px] font-bold text-slate-700"><i class="fa-solid fa-receipt mr-1"></i> Extra Kosten Voor Jaar ${yr}</span>
                             <button type="button" onclick="addExtraCostLine('${yr}')" class="inp-editable text-[11px] text-brand-600 hover:text-brand-800 font-semibold flex items-center gap-1">
                                 <i class="fa-solid fa-plus text-[10px]"></i> Regel Toevoegen
                             </button>
@@ -1218,10 +1242,52 @@
                 `;
                 container.appendChild(card);
 
+                // Bestaande contractregels vullen (of migreer oude contractAmount als er nog geen contractItems zijn)
+                let itemsToRender = yrData.contractItems || [];
+                if ((!itemsToRender || itemsToRender.length === 0) && (yrData.contractAmount > 0)) {
+                    itemsToRender = [{ description: 'Hoofdcontract', amount: yrData.contractAmount }];
+                }
+                if (itemsToRender.length === 0) {
+                    // Standaard ten minste 1 leeg veld tonen
+                    itemsToRender = [{ description: 'Hoofdcontract', amount: 0 }];
+                }
+                itemsToRender.forEach(ci => addContractAmountLine(yr, ci));
+
+                // Bestaande extra kosten vullen
                 if (Array.isArray(yrData.extraCosts)) {
                     yrData.extraCosts.forEach(ex => addExtraCostLine(yr, ex));
                 }
             });
+        }
+
+        // Toevoegen van een dynamische contractbedrag-regel (naam + bedrag)
+        function addContractAmountLine(yr, data = null) {
+            const container = document.getElementById(`contract-items-list-${yr}`);
+            if (!container) return;
+
+            const rowId = 'ci_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const row = document.createElement('div');
+            row.id = rowId;
+            row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200/60 text-xs';
+
+            row.innerHTML = `
+                <div class="col-span-7">
+                    <input type="text" placeholder="Omschrijving contractregel (bijv. Licenties)..." value="${escapeHtml(data ? data.description || '' : '')}" class="inp-editable ci-desc w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-4">
+                    <input type="number" step="0.01" placeholder="Bedrag (€)" value="${data ? data.amount || '' : ''}" class="inp-editable ci-amt w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-1 text-right">
+                    <button type="button" onclick="document.getElementById('${rowId}').remove()" class="inp-editable text-slate-400 hover:text-rose-600 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+
+            const btnSave = document.getElementById('btnSaveCompany');
+            const isEditing = btnSave && !btnSave.classList.contains('hidden');
+            row.querySelectorAll('.inp-editable').forEach(inp => inp.disabled = !isEditing);
         }
 
         function toggleYearVerified(yr, isChecked) {
@@ -1298,10 +1364,23 @@
             const yearlyData = {};
             appData.settings.years.forEach(yr => {
                 const verified = document.getElementById(`yr-verified-${yr}`)?.checked || false;
-                const amt = parseFloat(document.getElementById(`yr-amt-${yr}`)?.value) || 0;
                 const yearType = document.getElementById(`yr-type-${yr}`)?.value || 'Boekjaar';
                 const poNumber = document.getElementById(`yr-po-${yr}`)?.value || '';
 
+                // Ophalen van alle opgegeven contractbedrag-regels
+                const contractItems = [];
+                const contractContainer = document.getElementById(`contract-items-list-${yr}`);
+                if (contractContainer) {
+                    contractContainer.querySelectorAll('[id^="ci_"]').forEach(row => {
+                        const desc = row.querySelector('.ci-desc')?.value || '';
+                        const amount = parseFloat(row.querySelector('.ci-amt')?.value) || 0;
+                        if (amount > 0 || desc) {
+                            contractItems.push({ description: desc, amount: amount });
+                        }
+                    });
+                }
+
+                // Ophalen van alle extra kosten
                 const extraCosts = [];
                 const extraContainer = document.getElementById(`extra-costs-list-${yr}`);
                 if (extraContainer) {
@@ -1317,7 +1396,7 @@
                 }
 
                 yearlyData[yr] = {
-                    contractAmount: amt,
+                    contractItems: contractItems,
                     yearType: yearType,
                     poNumber: poNumber,
                     verified: verified,
@@ -1575,7 +1654,7 @@
 
                         const yearlyData = {};
                         yearlyData[curYear] = {
-                            contractAmount: contractAmt,
+                            contractItems: [{ description: 'Hoofdcontract', amount: contractAmt }],
                             yearType: yearType,
                             poNumber: String(poNum),
                             verified: false,
