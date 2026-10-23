@@ -443,11 +443,20 @@
                 </div>
 
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
-                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        <i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten per Jaar
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten &amp; Zichtbaarheid per Jaar</span>
+                        <span class="text-[10px] text-slate-400 font-normal">Vink 'Zichtbaar' aan/uit om te tonen in de app</span>
                     </h4>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="text-slate-500 border-b border-slate-200">
+                                    <th class="p-2">Jaar</th>
+                                    <th class="p-2">Budget (€)</th>
+                                    <th class="p-2 text-center">Zichtbaar</th>
+                                    <th class="p-2 text-right">Actie</th>
+                                </tr>
+                            </thead>
                             <tbody id="budgetSettingsTableBody" class="divide-y divide-slate-200"></tbody>
                         </table>
                     </div>
@@ -523,6 +532,13 @@
                     2026: 180000,
                     2027: 200000
                 },
+                yearVisibility: {
+                    2023: true,
+                    2024: true,
+                    2025: true,
+                    2026: true,
+                    2027: true
+                },
                 categories: ['Fixed', 'Fixed extra', 'Hygenic', 'OOP', 'Operations', 'Cleaning', 'Safety', 'Albron', 'Zuiderzoet', 'Vervallen', 'CMO'],
                 departments: ['General', 'Technical', 'Green', 'Pool', 'Cleaning', 'Safety', 'Operations', 'Zuiderzoet', 'Albron'],
                 contractTypes: ['Collecties', 'Park', 'Vervallen']
@@ -548,6 +564,11 @@
 
                 if (data && data.payload) {
                     appData = { ...appData, ...data.payload };
+                    // Zorg ervoor dat yearVisibility bestaat voor oudere opgeslagen data
+                    if (!appData.settings.yearVisibility) {
+                        appData.settings.yearVisibility = {};
+                        appData.settings.years.forEach(yr => appData.settings.yearVisibility[yr] = true);
+                    }
                 } else {
                     await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
                 }
@@ -563,8 +584,14 @@
                 appData.settings.years.push(currentYear);
                 appData.settings.years.sort();
             }
-            if (!appData.activeYear) {
-                appData.activeYear = currentYear;
+            if (appData.settings.yearVisibility[currentYear] === undefined) {
+                appData.settings.yearVisibility[currentYear] = true;
+            }
+
+            if (!appData.activeYear || appData.settings.yearVisibility[appData.activeYear] === false) {
+                // Zoek eerste zichtbare jaar als actief jaar onzichtbaar is
+                const firstVisible = appData.settings.years.find(yr => appData.settings.yearVisibility[yr] !== false);
+                appData.activeYear = firstVisible || currentYear;
             }
 
             populateYearDropdowns();
@@ -598,7 +625,16 @@
             const select = document.getElementById('globalYearSelect');
             if (!select) return;
             select.innerHTML = '';
-            appData.settings.years.forEach(yr => {
+
+            // Toon alleen jaren waarvan de zichtbaarheid niet op false staat
+            const visibleYears = appData.settings.years.filter(yr => appData.settings.yearVisibility && appData.settings.yearVisibility[yr] !== false);
+
+            if (visibleYears.length === 0) {
+                select.innerHTML = '<option value="">Geen jaren zichtbaar</option>';
+                return;
+            }
+
+            visibleYears.forEach(yr => {
                 const opt = document.createElement('option');
                 opt.value = yr;
                 opt.textContent = yr;
@@ -610,6 +646,7 @@
         }
 
         function changeActiveYear(yearVal) {
+            if (!yearVal) return;
             appData.activeYear = parseInt(yearVal, 10);
             saveData();
             populateYearDropdowns();
@@ -865,7 +902,6 @@
                 const yearType = yearInfo.yearType || 'Boekjaar';
                 const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
 
-                // Bepaal aantal contractregels voor de indicator
                 const contractCount = Array.isArray(yearInfo.contractItems) ? yearInfo.contractItems.length : (yearInfo.contractAmount > 0 ? 1 : 0);
                 let contractBadgeHtml = '';
                 if (contractCount > 1) {
@@ -1528,12 +1564,20 @@
             if (!tbody) return;
             tbody.innerHTML = '';
 
+            if (!appData.settings.yearVisibility) {
+                appData.settings.yearVisibility = {};
+            }
+
             appData.settings.years.forEach(yr => {
+                const isVisible = appData.settings.yearVisibility[yr] !== false;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-2 font-bold text-slate-800">${yr}</td>
                     <td class="p-2">
                         <input type="number" id="budget-input-${yr}" value="${appData.settings.budgets[yr] || 0}" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                    </td>
+                    <td class="p-2 text-center">
+                        <input type="checkbox" id="visibility-input-${yr}" ${isVisible ? 'checked' : ''} class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer">
                     </td>
                     <td class="p-2 text-right">
                         <button onclick="saveSingleBudget(${yr})" class="bg-brand-600 hover:bg-brand-500 text-white px-2 py-1 rounded text-[11px] font-semibold">Opslaan</button>
@@ -1545,9 +1589,16 @@
 
         function saveSingleBudget(yr) {
             const val = parseFloat(document.getElementById(`budget-input-${yr}`)?.value) || 0;
+            const visible = document.getElementById(`visibility-input-${yr}`)?.checked ?? true;
+
             appData.settings.budgets[yr] = val;
+            if (!appData.settings.yearVisibility) appData.settings.yearVisibility = {};
+            appData.settings.yearVisibility[yr] = visible;
+
             saveData();
-            alert(`Budget voor jaar ${yr} opgeslagen op € ${val.toLocaleString('nl-NL')}`);
+            populateYearDropdowns();
+            refreshDashboard();
+            alert(`Instellingen voor jaar ${yr} opgeslagen!`);
         }
 
         function addNewYearSetting() {
@@ -1569,6 +1620,8 @@
             }
 
             appData.settings.budgets[yr] = budget;
+            if (!appData.settings.yearVisibility) appData.settings.yearVisibility = {};
+            appData.settings.yearVisibility[yr] = true;
 
             yrInput.value = '';
             budgetInput.value = '';
@@ -1576,6 +1629,7 @@
             renderBudgetSettingsTable();
             saveData();
             populateYearDropdowns();
+            refreshDashboard();
         }
 
         function openReportModal() {
