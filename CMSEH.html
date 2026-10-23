@@ -539,14 +539,26 @@
         }
 
         function calculateCompanyYearlyCosts(company, year) {
-            if (!company.yearlyData || !company.yearlyData[year]) {
-                return { contractCost: 0, extraCost: 0, total: 0 };
-            }
-            const yData = company.yearlyData[year];
-            const contractCost = parseFloat(yData.contractCost || 0);
-            const extraCost = parseFloat(yData.extraCost || 0);
-            return { contractCost, extraCost, total: contractCost + extraCost };
-        }
+    if (!company.yearlyData) {
+        return { contractCost: 0, extraCost: 0, total: 0 };
+    }
+    
+    // Ondersteun zowel [jaar] als objecten met jaartallen
+    const yData = company.yearlyData[year] || company.yearlyData;
+    if (!yData) {
+        return { contractCost: 0, extraCost: 0, total: 0 };
+    }
+
+    // Controleer meerdere mogelijke veldnamen die in je database kunnen staan
+    const contractCost = parseFloat(yData.contractCost || yData.cost || yData.contract || 0);
+    const extraCost = parseFloat(yData.extraCost || yData.extracost || yData.extra || 0);
+
+    return {
+        contractCost,
+        extraCost,
+        total: contractCost + extraCost
+    };
+}
 
         function renderCompanyTable() {
             const tbody = document.getElementById('companyTableBody');
