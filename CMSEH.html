@@ -539,19 +539,22 @@
         }
 
         function calculateCompanyYearlyCosts(company, year) {
-    if (!company.yearlyData) {
+    if (!company.yearlyData || !company.yearlyData[year]) {
         return { contractCost: 0, extraCost: 0, total: 0 };
     }
+    const yData = company.yearlyData[year];
     
-    // Ondersteun zowel [jaar] als objecten met jaartallen
-    const yData = company.yearlyData[year] || company.yearlyData;
-    if (!yData) {
-        return { contractCost: 0, extraCost: 0, total: 0 };
+    // Pak contractAmount uit de database (of val terug op contractCost/cost)
+    const contractCost = parseFloat(yData.contractAmount || yData.contractCost || yData.cost || 0);
+    
+    // Bereken extra kosten (of het nu een getal is of een array van extra kosten)
+    let extraCost = 0;
+    if (Array.isArray(yData.extraCosts)) {
+        // Als extraCosts een array is, tellen we de bedragen daarin bij elkaar op (indien aanwezig)
+        extraCost = yData.extraCosts.reduce((sum, item) => sum + parseFloat(item.amount || item.cost || 0), 0);
+    } else {
+        extraCost = parseFloat(yData.extraCosts || yData.extraCost || yData.extracost || 0);
     }
-
-    // Controleer meerdere mogelijke veldnamen die in je database kunnen staan
-    const contractCost = parseFloat(yData.contractCost || yData.cost || yData.contract || 0);
-    const extraCost = parseFloat(yData.extraCost || yData.extracost || yData.extra || 0);
 
     return {
         contractCost,
@@ -559,7 +562,6 @@
         total: contractCost + extraCost
     };
 }
-
         function renderCompanyTable() {
             const tbody = document.getElementById('companyTableBody');
             if (!tbody) return;
@@ -590,7 +592,7 @@
                     totalExtraYear += yearCosts.extraCost;
                 }
 
-                const poNums = (c.yearlyData && c.yearlyData[appData.activeYear]?.poNumbers) || '-';
+                const poNums = (c.yearlyData && c.yearlyData[appData.activeYear]?.poNumber) || '-';
                 const isChecked = selectedCompanyIds.has(c.id);
 
                 return `
