@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (XLSX) CDN -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Supabase JS Client -->
@@ -40,7 +42,7 @@
         }
     </style>
 </head>
-<body class="h-full flex flex-col text-slate-800 bg-slate-100" onload="initSystem()">
+<body class="h-full flex flex-col text-slate-800 bg-slate-100">
 
     <!-- Header Navigation -->
     <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
@@ -147,63 +149,87 @@
             </div>
         </div>
 
-        <!-- Filters & Multi-selectie Rekenmachine (Volledige Breedte) -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <!-- Chart & Analytics Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-1 flex flex-col justify-between">
                 <div>
-                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-filter text-brand-500"></i>
-                        Filters &amp; Multi-selectie Rekenmachine
-                    </h2>
-                    <p class="text-xs text-slate-500">Selecteer bedrijven in de tabel hieronder om de gecombineerde kosten live op te tellen.</p>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-brand-500"></i>
+                            Kosten per Categorie
+                        </h2>
+                        <select id="chartCategoryFilter" onchange="renderChart()" class="text-xs bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 font-medium focus:outline-none">
+                            <option value="ALL">Alle Categorieën</option>
+                        </select>
+                    </div>
+                    <div class="relative w-full h-56 flex items-center justify-center">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="selectAllCompanies(true)" class="text-xs font-semibold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors">
-                        Selecteer Alles
-                    </button>
-                    <button onclick="selectAllCompanies(false)" class="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
-                        Demarkeer Alles
-                    </button>
+                <div class="text-center text-xs text-slate-400 mt-2">
+                    Inclusief 9/12 pro-rata kalenderjaar verdeling voor <span class="lbl-year font-semibold">2026</span>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-2 flex flex-col justify-between">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Zoek Bedrijf / Omschrijving</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                        <input type="text" id="filterSearch" oninput="renderCompanyTable()" placeholder="Typ om te zoeken..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                    <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-filter text-brand-500"></i>
+                                Filters &amp; Multi-selectie Rekenmachine
+                            </h2>
+                            <p class="text-xs text-slate-500">Selecteer bedrijven in de tabel hieronder om de gecombineerde kosten live op te tellen.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="selectAllCompanies(true)" class="text-xs font-semibold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors">
+                                Selecteer Alles
+                            </button>
+                            <button onclick="selectAllCompanies(false)" class="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
+                                Demarkeer Alles
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Contract Categorie</label>
-                    <select id="filterCategory" onchange="renderCompanyTable()" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
-                        <option value="ALL">Alle Categorieën</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Status Bedrijf</label>
-                    <select id="filterStatus" onchange="renderCompanyTable()" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
-                        <option value="ALL">Alle Statussen</option>
-                        <option value="ACTIVE" selected>Alleen Actief</option>
-                        <option value="INACTIVE">Alleen Inactief</option>
-                    </select>
-                </div>
-            </div>
 
-            <div class="p-4 bg-slate-900 text-white rounded-xl flex flex-wrap justify-between items-center gap-3">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-brand-500 p-2.5 rounded-lg text-white">
-                        <i class="fa-solid fa-calculator text-base"></i>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-400 block font-medium">Geselecteerde Bedrijven (<span id="selectedCountText">0</span>)</span>
-                        <span class="text-xs text-slate-300">Som van alle aangevinkte rijen in <span class="lbl-year font-bold">2026</span></span>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Zoek Bedrijf / Omschrijving</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                <input type="text" id="filterSearch" oninput="renderCompanyTable()" placeholder="Typ om te zoeken..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Contract Categorie</label>
+                            <select id="filterCategory" onchange="onCategoryFilterChange()" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                <option value="ALL">Alle Categorieën</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Status Bedrijf</label>
+                            <select id="filterStatus" onchange="renderCompanyTable()" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                <option value="ALL">Alle Statussen</option>
+                                <option value="ACTIVE" selected>Alleen Actief</option>
+                                <option value="INACTIVE">Alleen Inactief</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="text-right">
-                    <div id="selectedCostTotal" class="text-xl font-bold text-emerald-400">€ 0,00</div>
-                    <span id="selectedSubtext" class="text-xs text-slate-400">Contract: € 0 | Extra: € 0</span>
+
+                <div class="p-4 bg-slate-900 text-white rounded-xl flex flex-wrap justify-between items-center gap-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-brand-500 p-2.5 rounded-lg text-white">
+                            <i class="fa-solid fa-calculator text-base"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 block font-medium">Geselecteerde Bedrijven (<span id="selectedCountText">0</span>)</span>
+                            <span class="text-xs text-slate-300">Som van alle aangevinkte rijen in <span class="lbl-year font-bold">2026</span></span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div id="selectedCostTotal" class="text-xl font-bold text-emerald-400">€ 0,00</div>
+                        <span id="selectedSubtext" class="text-xs text-slate-400">Contract: € 0 | Extra: € 0</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -439,18 +465,71 @@
                 </div>
 
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
-                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                        <span><i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten per Jaar</span>
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        <i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten per Jaar
                     </h4>
-                    <div id="settingsBudgetsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1"></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <tbody id="budgetSettingsTableBody" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                    <div class="pt-2 border-t border-slate-200 flex gap-2 items-center">
+                        <input type="number" id="newYearInput" placeholder="Jaartal (bijv. 2028)" class="w-32 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
+                        <input type="number" id="newYearBudgetInput" placeholder="Budget (€)" class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
+                        <button onclick="addNewYearSetting()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Jaar Toevoegen</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Application Logic & Supabase Initialization -->
+    <!-- Report / Export & Import Modal -->
+    <div id="reportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden border border-slate-100 my-8">
+            <div class="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-500 p-2 rounded-xl text-white">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">Rapportage, Export &amp; Import</h3>
+                        <p class="text-xs text-slate-400">Exporteer gegevens naar Excel of voeg nieuwe bedrijven toe via Excel</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeReportModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase">Gegevens Exporteren</h4>
+                    <p class="text-xs text-slate-500">Download het volledige contractenoverzicht van het actieve jaar naar Excel.</p>
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel"></i> Exporteer Huidig Jaar naar Excel
+                    </button>
+                </div>
+
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase">Bedrijven Importeren via Excel</h4>
+                    <p class="text-xs text-slate-500">Download eerst het sjabloon, vul het in en upload het hieronder om snel meerdere contracten toe te voegen.</p>
+                    <div class="flex gap-2">
+                        <button onclick="downloadExcelTemplate()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors">
+                            <i class="fa-solid fa-download mr-1"></i> Download Sjabloon
+                        </button>
+                        <label class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5">
+                            <i class="fa-solid fa-upload"></i> Upload Ingevuld Sjabloon
+                            <input type="file" accept=".xlsx, .xls" onchange="importExcelFile(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
     <script>
-        // Supabase Credentials
+        // Supabase Configuration
         const SUPABASE_URL = 'https://xwnbuzxbrnltxfczatrl.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_5DLJrsERiTy8GYmjE4X1Zg_Qbk8XHRz';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -474,9 +553,8 @@
         };
 
         let selectedCompanyIds = new Set();
-        let isEditMode = false;
+        let myCategoryChart = null;
 
-        // Initialize System & Sync with Supabase
         async function initSystem() {
             const syncEl = document.getElementById('syncStatus');
             try {
@@ -497,329 +575,854 @@
                 }
 
                 syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
-                syncEl.className = 'text-[11px] text-emerald-400 hidden sm:inline-block bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700';
+            } catch (e) {
+                console.error("Failed loading data from Supabase:", e);
+                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
+            }
 
-                populateDropdowns();
-                renderCompanyTable();
-            } catch (err) {
-                console.error('Fout bij laden van Supabase:', err);
-                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Fout bij laden';
-                syncEl.className = 'text-[11px] text-rose-400 hidden sm:inline-block bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700';
+            const currentYear = new Date().getFullYear();
+            if (!appData.settings.years.includes(currentYear)) {
+                appData.settings.years.push(currentYear);
+                appData.settings.years.sort();
+            }
+            if (!appData.activeYear) {
+                appData.activeYear = currentYear;
+            }
+
+            populateYearDropdowns();
+            refreshDashboard();
+        }
+
+        async function saveData() {
+            const syncEl = document.getElementById('syncStatus');
+            if (syncEl) {
+                syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
+            }
+            
+            try {
+                const { error } = await supabaseClient
+                    .from('app_data')
+                    .upsert({ id: 1, payload: appData });
+
+                if (error) throw error;
+                if (syncEl) {
+                    syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
+                }
+            } catch (e) {
+                console.error("Failed saving data to Supabase:", e);
+                if (syncEl) {
+                    syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Opslaan mislukt';
+                }
             }
         }
 
-        async function saveDataToCloud() {
-            const syncEl = document.getElementById('syncStatus');
-            try {
-                syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
-                const { error } = await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
-                if (error) throw error;
+        function populateYearDropdowns() {
+            const select = document.getElementById('globalYearSelect');
+            if (!select) return;
+            select.innerHTML = '';
+            appData.settings.years.forEach(yr => {
+                const opt = document.createElement('option');
+                opt.value = yr;
+                opt.textContent = yr;
+                if (yr === appData.activeYear) opt.selected = true;
+                select.appendChild(opt);
+            });
 
-                syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
-            } catch (err) {
-                console.error('Fout bij opslaan:', err);
-                syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Fout bij opslaan';
+            document.querySelectorAll('.lbl-year').forEach(el => el.textContent = appData.activeYear);
+        }
+
+        function changeActiveYear(yearVal) {
+            appData.activeYear = parseInt(yearVal, 10);
+            saveData();
+            populateYearDropdowns();
+            refreshDashboard();
+        }
+
+        function calculateCompanyYearlyCosts(company, year, categoryFilter = 'ALL') {
+            let matchedContractCost = 0;
+            let matchedExtraCost = 0;
+
+            const targetYear = parseInt(year, 10);
+            const prevYear = targetYear - 1;
+
+            if (company.yearlyData) {
+                const curData = company.yearlyData[targetYear] || company.yearlyData[String(targetYear)];
+                if (curData) {
+                    const rawAmt = parseFloat(curData.contractAmount) || 0;
+                    let contractFactor = 1;
+                    if (curData.yearType === 'Kalenderjaar') {
+                        contractFactor = 9 / 12;
+                    }
+
+                    const mainCat = company.category || 'Fixed';
+                    const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
+                    if (mainMatches) {
+                        matchedContractCost += rawAmt * contractFactor;
+                    }
+
+                    if (Array.isArray(curData.extraCosts)) {
+                        curData.extraCosts.forEach(ex => {
+                            const exAmt = parseFloat(ex.amount) || 0;
+                            const exCat = ex.category || 'Overig';
+                            const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
+
+                            if (exMatches) {
+                                if (exCat === 'Fixed extra') {
+                                    matchedExtraCost += exAmt;
+                                } else {
+                                    matchedExtraCost += exAmt * contractFactor;
+                                }
+                            }
+                        });
+                    }
+                }
+
+                const prevData = company.yearlyData[prevYear] || company.yearlyData[String(prevYear)];
+                if (prevData) {
+                    const prevAmt = parseFloat(prevData.contractAmount) || 0;
+                    if (prevData.yearType === 'Kalenderjaar') {
+                        const mainCat = company.category || 'Fixed';
+                        const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
+                        if (mainMatches) {
+                            matchedContractCost += prevAmt * (3 / 12);
+                        }
+                    }
+                }
             }
+
+            return {
+                contractCost: matchedContractCost,
+                extraCost: matchedExtraCost,
+                totalCost: matchedContractCost + matchedExtraCost
+            };
+        }
+
+        function refreshDashboard() {
+            const curYear = appData.activeYear;
+            const budget = appData.settings.budgets[curYear] || 0;
+
+            let totalContractCosts = 0;
+            let totalExtraCosts = 0;
+            let activeCount = 0;
+            let inactiveCount = 0;
+
+            const categoryTotals = {};
+            appData.settings.categories.forEach(cat => categoryTotals[cat] = 0);
+
+            appData.companies.forEach(comp => {
+                if (comp.active === false) {
+                    inactiveCount++;
+                } else {
+                    activeCount++;
+                }
+
+                if (comp.active !== false) {
+                    const costs = calculateCompanyYearlyCosts(comp, curYear);
+                    const cat = comp.category || 'Overig';
+                    
+                    categoryTotals[cat] = (categoryTotals[cat] || 0) + costs.totalCost;
+
+                    if (cat === 'Fixed' || cat === 'Fixed extra') {
+                        totalContractCosts += costs.contractCost;
+                        totalExtraCosts += costs.extraCost;
+                    }
+                }
+            });
+
+            const totalCosts = totalContractCosts + totalExtraCosts;
+            const remainingBudget = budget - totalCosts;
+
+            document.getElementById('kpiBudget').textContent = formatCurrency(budget);
+            document.getElementById('kpiCosts').textContent = formatCurrency(totalCosts);
+            document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(totalContractCosts)} | Extra: ${formatCurrency(totalExtraCosts)}`;
+
+            const remEl = document.getElementById('kpiRemaining');
+            remEl.textContent = formatCurrency(remainingBudget);
+            if (remainingBudget < 0) {
+                remEl.className = 'text-2xl font-bold text-rose-600';
+            } else {
+                remEl.className = 'text-2xl font-bold text-emerald-600';
+            }
+
+            const pct = budget > 0 ? ((remainingBudget / budget) * 100).toFixed(1) : 0;
+            document.getElementById('kpiRemainingPct').textContent = `${pct}% van budget over`;
+
+            document.getElementById('kpiCompaniesCount').textContent = appData.companies.length;
+            document.getElementById('kpiActiveCompaniesSub').textContent = `${activeCount} Actief / ${inactiveCount} Inactief`;
+
+            populateCategoryFilterDropdowns();
+            renderChart(categoryTotals);
+            renderCompanyTable();
         }
 
         function formatCurrency(amount) {
             return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(amount || 0);
         }
 
-        function populateDropdowns() {
-            const yearSelect = document.getElementById('globalYearSelect');
-            if (yearSelect) {
-                yearSelect.innerHTML = appData.settings.years.map(y => `<option value="${y}" ${y === appData.activeYear ? 'selected' : ''}>${y}</option>`).join('');
-            }
-            
-            const catSelect = document.getElementById('filterCategory');
-            if (catSelect) {
-                catSelect.innerHTML = '<option value="ALL">Alle Categorieën</option>' + appData.settings.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            }
+        function populateCategoryFilterDropdowns() {
+            const chartFilter = document.getElementById('chartCategoryFilter');
+            const tableFilter = document.getElementById('filterCategory');
+            if (!chartFilter || !tableFilter) return;
 
-            document.querySelectorAll('.lbl-year').forEach(el => el.textContent = appData.activeYear);
+            const curChartVal = chartFilter.value;
+            const curTableVal = tableFilter.value;
+
+            chartFilter.innerHTML = '<option value="ALL">Alle Categorieën</option>';
+            tableFilter.innerHTML = '<option value="ALL">Alle Categorieën</option>';
+
+            appData.settings.categories.forEach(cat => {
+                chartFilter.innerHTML += `<option value="${cat}">${cat}</option>`;
+                tableFilter.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+
+            chartFilter.value = curChartVal || 'ALL';
+            tableFilter.value = curTableVal || 'ALL';
         }
 
-        function changeActiveYear(year) {
-            appData.activeYear = parseInt(year);
-            populateDropdowns();
+        function renderChart(categoryTotals = null) {
+            if (!categoryTotals) {
+                categoryTotals = {};
+                appData.settings.categories.forEach(cat => categoryTotals[cat] = 0);
+                appData.companies.forEach(comp => {
+                    if (comp.active !== false) {
+                        const costs = calculateCompanyYearlyCosts(comp, appData.activeYear);
+                        const cat = comp.category || 'Overig';
+                        categoryTotals[cat] = (categoryTotals[cat] || 0) + costs.totalCost;
+                    }
+                });
+            }
+
+            const filterVal = document.getElementById('chartCategoryFilter').value;
+            let labels = Object.keys(categoryTotals);
+            let data = Object.values(categoryTotals);
+
+            if (filterVal !== 'ALL') {
+                labels = labels.filter(l => l === filterVal);
+                data = labels.map(l => categoryTotals[l] || 0);
+            }
+
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            if (myCategoryChart) {
+                myCategoryChart.destroy();
+            }
+
+            const colors = [
+                '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+                '#14b8a6', '#f97316', '#6366f1', '#06b6d4', '#64748b'
+            ];
+
+            myCategoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, font: { size: 10 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        function onCategoryFilterChange() {
+            selectedCompanyIds.clear();
+            const masterCheckbox = document.getElementById('masterCheckbox');
+            if (masterCheckbox) masterCheckbox.checked = false;
             renderCompanyTable();
-        }
-
-        function calculateCompanyYearlyCosts(company, year) {
-            if (!company.yearlyData || !company.yearlyData[year]) {
-                return { contractCost: 0, extraCost: 0, total: 0 };
-            }
-            const yData = company.yearlyData[year];
-            const contractCost = parseFloat(yData.contractCost || 0);
-            const extraCost = parseFloat(yData.extraCost || 0);
-            return {
-                contractCost,
-                extraCost,
-                total: contractCost + extraCost
-            };
         }
 
         function renderCompanyTable() {
             const tbody = document.getElementById('companyTableBody');
             if (!tbody) return;
+            tbody.innerHTML = '';
 
-            const search = document.getElementById('filterSearch')?.value.toLowerCase() || '';
-            const catFilter = document.getElementById('filterCategory')?.value || 'ALL';
-            const statusFilter = document.getElementById('filterStatus')?.value || 'ALL';
+            const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+            const catVal = document.getElementById('filterCategory').value;
+            const statusVal = document.getElementById('filterStatus').value;
 
-            let totalContractYear = 0;
-            let totalExtraYear = 0;
-            let activeCount = 0;
-            let inactiveCount = 0;
+            const curYear = appData.activeYear;
 
-            const filtered = appData.companies.filter(c => {
-                if (c.active !== false) activeCount++;
-                else inactiveCount++;
+            const filteredCompanies = appData.companies.filter(comp => {
+                const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
+                const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
+                if (!nameMatch && !descMatch) return false;
 
-                const matchesSearch = c.name.toLowerCase().includes(search) || (c.description && c.description.toLowerCase().includes(search));
-                const matchesCat = catFilter === 'ALL' || c.category === catFilter;
-                const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'ACTIVE' ? c.active !== false : c.active === false);
-                return matchesSearch && matchesCat && matchesStatus;
-            });
+                if (statusVal === 'ACTIVE' && comp.active === false) return false;
+                if (statusVal === 'INACTIVE' && comp.active !== false) return false;
 
-            tbody.innerHTML = filtered.map(c => {
-                const yearCosts = calculateCompanyYearlyCosts(c, appData.activeYear);
-                if (c.active !== false) {
-                    totalContractYear += yearCosts.contractCost;
-                    totalExtraYear += yearCosts.extraCost;
+                if (catVal !== 'ALL') {
+                    const mainCatMatch = (comp.category === catVal);
+                    const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
+                    const hasExtraCatMatch = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.some(ex => ex.category === catVal);
+
+                    if (!mainCatMatch && !hasExtraCatMatch) {
+                        return false;
+                    }
                 }
 
-                const poNums = (c.yearlyData && c.yearlyData[appData.activeYear]?.poNumbers) || '-';
-                const isChecked = selectedCompanyIds.has(c.id);
+                return true;
+            });
 
-                return `
-                    <tr class="hover:bg-slate-50 transition-colors ${c.active === false ? 'opacity-50 bg-slate-50' : ''}">
-                        <td class="p-3 text-center">
-                            <input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} onchange="toggleCompanySelection('${c.id}', this.checked)" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+            const masterCheckbox = document.getElementById('masterCheckbox');
+            if (masterCheckbox && filteredCompanies.length > 0) {
+                const allVisibleSelected = filteredCompanies.every(comp => selectedCompanyIds.has(comp.id));
+                masterCheckbox.checked = allVisibleSelected;
+            } else if (masterCheckbox) {
+                masterCheckbox.checked = false;
+            }
+
+            if (filteredCompanies.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="p-8 text-center text-slate-400">
+                            Geen bedrijven gevonden die aan de gekozen filters voldoen.
                         </td>
-                        <td class="p-3 font-semibold text-slate-900 cursor-pointer hover:text-brand-600" onclick="openCompanyModal('${c.id}')">
-                            ${c.name}
-                            ${c.active === false ? '<span class="ml-1 text-[10px] text-rose-500 font-normal">(Inactief)</span>' : ''}
-                        </td>
-                        <td class="p-3 text-slate-600 truncate max-w-xs">${c.description || '-'}</td>
-                        <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-medium">${c.category || '-'}</span></td>
-                        <td class="p-3 text-slate-600">${c.contractType || '-'}</td>
-                        <td class="p-3 text-right font-medium text-slate-900">${formatCurrency(yearCosts.total)}</td>
-                        <td class="p-3 text-slate-600 font-mono text-[11px]">${poNums}</td>
-                        <td class="p-3 text-center font-medium ${yearCosts.extraCost > 0 ? 'text-amber-600' : 'text-slate-400'}">${formatCurrency(yearCosts.extraCost)}</td>
                     </tr>
                 `;
-            }).join('');
+                updateSelectedTotal();
+                return;
+            }
 
-            // KPI Updates
-            const currentBudget = appData.settings.budgets[appData.activeYear] || 0;
-            const totalCostsYear = totalContractYear + totalExtraYear;
-            const remainingBudget = currentBudget - totalCostsYear;
-            const remainingPct = currentBudget > 0 ? Math.round((remainingBudget / currentBudget) * 100) : 0;
+            filteredCompanies.forEach(comp => {
+                const isSelected = selectedCompanyIds.has(comp.id);
+                const costs = calculateCompanyYearlyCosts(comp, curYear, catVal);
+                
+                const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
 
-            document.getElementById('kpiBudget').textContent = formatCurrency(currentBudget);
-            document.getElementById('kpiCosts').textContent = formatCurrency(totalCostsYear);
-            document.getElementById('kpiCostsSub').textContent = `Contract: ${formatCurrency(totalContractYear)} | Extra: ${formatCurrency(totalExtraYear)}`;
-            document.getElementById('kpiRemaining').textContent = formatCurrency(remainingBudget);
-            document.getElementById('kpiRemainingPct').textContent = `${remainingPct}% van budget over`;
-            document.getElementById('kpiCompaniesCount').textContent = appData.companies.length;
-            document.getElementById('kpiActiveCompaniesSub').textContent = `${activeCount} Actief / ${inactiveCount} Inactief`;
+                const isYearActiveForCompany = yearInfo && (yearInfo.verified === true || yearInfo.verified === 'true');
 
-            updateSelectedCalculator();
+                const poNumbers = yearInfo.poNumber || '-';
+                const yearType = yearInfo.yearType || 'Boekjaar';
+                const hasExtra = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0;
+
+                const tr = document.createElement('tr');
+                
+                let rowBgClass = 'hover:bg-slate-50';
+                if (comp.active === false) {
+                    rowBgClass = 'opacity-50 bg-slate-50';
+                } else if (isYearActiveForCompany) {
+                    rowBgClass = 'bg-emerald-100/80 hover:bg-emerald-200/75';
+                }
+
+                tr.className = `transition-colors ${rowBgClass}`;
+                tr.innerHTML = `
+                    <td class="p-3 text-center">
+                        <input type="checkbox" onchange="toggleSelectCompany('${comp.id}', this.checked)" ${isSelected ? 'checked' : ''} class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                    </td>
+                    <td class="p-3 font-bold text-brand-600 hover:text-brand-800 cursor-pointer" onclick="openCompanyModal('${comp.id}')">
+                        ${escapeHtml(comp.name)}
+                        ${comp.active === false ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">Inactief</span>' : ''}
+                    </td>
+                    <td class="p-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(comp.description || '')}">${escapeHtml(comp.description || '-')}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
+                    <td class="p-3 text-slate-600">${escapeHtml(yearType)}</td>
+                    <td class="p-3 text-right font-bold text-slate-900">${formatCurrency(costs.totalCost)}</td>
+                    <td class="p-3 text-slate-600 font-mono text-[11px]">${escapeHtml(poNumbers)}</td>
+                    <td class="p-3 text-center">
+                        ${hasExtra ? `
+                            <button onclick="toggleExtraRow('${comp.id}')" class="text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md font-semibold transition-colors">
+                                <i class="fa-solid fa-chevron-down mr-1"></i> Extra (${yearInfo.extraCosts.length})
+                            </button>
+                        ` : '<span class="text-slate-300">-</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                if (hasExtra) {
+                    const subTr = document.createElement('tr');
+                    subTr.id = `extra-row-${comp.id}`;
+                    subTr.className = 'hidden bg-amber-50/40 border-b border-amber-100';
+                    let extraRowsHtml = yearInfo.extraCosts.map(ex => `
+                        <div class="flex justify-between items-center text-xs text-slate-700 py-1 border-b border-amber-100/60 last:border-0">
+                            <div>
+                                <strong class="text-slate-900">${escapeHtml(ex.description || 'Extra kosten')}</strong>
+                                <span class="ml-2 px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded text-[10px]">${escapeHtml(ex.category || 'Overig')}</span>
+                                ${ex.poNumber ? `<span class="ml-2 font-mono text-slate-500 text-[11px]">PO: ${escapeHtml(ex.poNumber)}</span>` : ''}
+                            </div>
+                            <div class="font-bold text-slate-800">${formatCurrency(ex.amount)}</div>
+                        </div>
+                    `).join('');
+
+                    subTr.innerHTML = `
+                        <td></td>
+                        <td colspan="7" class="p-3 pl-8">
+                            <div class="bg-white/80 p-3 rounded-xl border border-amber-200/80 shadow-inner">
+                                <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">Specificatie Extra Kosten (<span class="lbl-year">${curYear}</span>):</span>
+                                ${extraRowsHtml}
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(subTr);
+                }
+            });
+
+            updateSelectedTotal();
         }
 
-        function toggleCompanySelection(id, checked) {
-            if (checked) selectedCompanyIds.add(id);
-            else selectedCompanyIds.delete(id);
-            updateSelectedCalculator();
+        function toggleExtraRow(compId) {
+            const row = document.getElementById(`extra-row-${compId}`);
+            if (row) {
+                row.classList.toggle('hidden');
+            }
+        }
+
+        function toggleSelectCompany(id, checked) {
+            if (checked) {
+                selectedCompanyIds.add(id);
+            } else {
+                selectedCompanyIds.delete(id);
+            }
+            updateSelectedTotal();
         }
 
         function toggleMasterCheckbox(checked) {
-            const search = document.getElementById('filterSearch')?.value.toLowerCase() || '';
-            const catFilter = document.getElementById('filterCategory')?.value || 'ALL';
-            const statusFilter = document.getElementById('filterStatus')?.value || 'ALL';
+            const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+            const catVal = document.getElementById('filterCategory').value;
+            const statusVal = document.getElementById('filterStatus').value;
+            const curYear = appData.activeYear;
 
-            appData.companies.forEach(c => {
-                const matchesSearch = c.name.toLowerCase().includes(search) || (c.description && c.description.toLowerCase().includes(search));
-                const matchesCat = catFilter === 'ALL' || c.category === catFilter;
-                const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'ACTIVE' ? c.active !== false : c.active === false);
-                
-                if (matchesSearch && matchesCat && matchesStatus) {
-                    if (checked) selectedCompanyIds.add(c.id);
-                    else selectedCompanyIds.delete(c.id);
+            const filteredCompanies = appData.companies.filter(comp => {
+                const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
+                const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
+                if (!nameMatch && !descMatch) return false;
+
+                if (statusVal === 'ACTIVE' && comp.active === false) return false;
+                if (statusVal === 'INACTIVE' && comp.active !== false) return false;
+
+                if (catVal !== 'ALL') {
+                    const mainCatMatch = (comp.category === catVal);
+                    const yearInfo = comp.yearlyData ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)] || {}) : {};
+                    const hasExtraCatMatch = Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.some(ex => ex.category === catVal);
+
+                    if (!mainCatMatch && !hasExtraCatMatch) return false;
+                }
+                return true;
+            });
+
+            filteredCompanies.forEach(comp => {
+                if (checked) {
+                    selectedCompanyIds.add(comp.id);
+                } else {
+                    selectedCompanyIds.delete(comp.id);
                 }
             });
+
             renderCompanyTable();
         }
 
-        function selectAllCompanies(select) {
-            if (select) {
-                appData.companies.forEach(c => selectedCompanyIds.add(c.id));
-            } else {
-                selectedCompanyIds.clear();
+        function selectAllCompanies(selectAll) {
+            const master = document.getElementById('masterCheckbox');
+            if (master) master.checked = selectAll;
+
+            if (!selectAll) {
+                const searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
+                const catVal = document.getElementById('filterCategory').value;
+                const statusVal = document.getElementById('filterStatus').value;
+
+                appData.companies.forEach(comp => {
+                    const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
+                    const descMatch = (comp.description || '').toLowerCase().includes(searchVal);
+                    if (nameMatch || descMatch) {
+                        if (catVal === 'ALL' || comp.category === catVal) {
+                            if (statusVal === 'ALL' || (statusVal === 'ACTIVE' && comp.active !== false) || (statusVal === 'INACTIVE' && comp.active === false)) {
+                                selectedCompanyIds.delete(comp.id);
+                            }
+                        }
+                    }
+                });
             }
-            renderCompanyTable();
+
+            toggleMasterCheckbox(selectAll);
         }
 
-        function updateSelectedCalculator() {
-            let totalSelected = 0;
-            let contractSelected = 0;
-            let extraSelected = 0;
+        function updateSelectedTotal() {
+            let total = 0;
+            let contractTotal = 0;
+            let extraTotal = 0;
+            const curYear = appData.activeYear;
+            const catVal = document.getElementById('filterCategory').value;
 
             selectedCompanyIds.forEach(id => {
-                const company = appData.companies.find(c => c.id === id);
-                if (company) {
-                    const costs = calculateCompanyYearlyCosts(company, appData.activeYear);
-                    contractSelected += costs.contractCost;
-                    extraSelected += costs.extraCost;
-                    totalSelected += costs.total;
+                const comp = appData.companies.find(c => c.id === id);
+                if (comp) {
+                    const costs = calculateCompanyYearlyCosts(comp, curYear, catVal);
+                    contractTotal += costs.contractCost;
+                    extraTotal += costs.extraCost;
+                    total += costs.totalCost;
                 }
             });
 
             document.getElementById('selectedCountText').textContent = selectedCompanyIds.size;
-            document.getElementById('selectedCostTotal').textContent = formatCurrency(totalSelected);
-            document.getElementById('selectedSubtext').textContent = `Contract: ${formatCurrency(contractSelected)} | Extra: ${formatCurrency(extraSelected)}`;
+            document.getElementById('selectedCostTotal').textContent = formatCurrency(total);
+            document.getElementById('selectedSubtext').textContent = `Contract: ${formatCurrency(contractTotal)} | Extra: ${formatCurrency(extraTotal)}`;
         }
 
-        // Modal Logic
         function openCompanyModal(companyId = null) {
-            const modal = document.getElementById('companyModal');
             const form = document.getElementById('companyForm');
+            if (!form) return;
             form.reset();
 
-            // Populate Dropdowns in Form
-            document.getElementById('inpCompCategory').innerHTML = appData.settings.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            document.getElementById('inpCompDepartment').innerHTML = appData.settings.departments.map(d => `<option value="${d}">${d}</option>`).join('');
-            document.getElementById('inpCompContractType').innerHTML = appData.settings.contractTypes.map(ct => `<option value="${ct}">${ct}</option>`).join('');
+            populateDropdownOptions();
+
+            const isEditMode = !companyId;
+            setCompanyModalEditState(isEditMode);
 
             if (companyId) {
-                const comp = appData.companies.find(c => c.id === companyId);
-                if (comp) {
-                    document.getElementById('editCompanyId').value = comp.id;
-                    document.getElementById('modalCompanyNameTitle').textContent = comp.name;
-                    document.getElementById('inpCompName').value = comp.name;
-                    document.getElementById('inpCompActive').value = comp.active !== false ? 'true' : 'false';
-                    document.getElementById('inpContractName').value = comp.contractName || '';
-                    document.getElementById('inpCompPhone').value = comp.phone || '';
-                    document.getElementById('inpCompEmail').value = comp.email || '';
-                    document.getElementById('inpCompOrg').value = comp.organization || '';
-                    document.getElementById('inpCompAddress').value = comp.address || '';
-                    document.getElementById('inpCompDescription').value = comp.description || '';
-                    document.getElementById('inpCompCategory').value = comp.category || appData.settings.categories[0];
-                    document.getElementById('inpCompDepartment').value = comp.department || appData.settings.departments[0];
-                    document.getElementById('inpCompContractType').value = comp.contractType || appData.settings.contractTypes[0];
-                    document.getElementById('inpCompStartDate').value = comp.startDate || '';
-                    document.getElementById('inpCompDuration').value = comp.duration || '';
-                    document.getElementById('inpCompCompulsory').value = comp.compulsory || 'Nee';
-                    document.getElementById('inpLinkContract').value = comp.linkContract || '';
-                    document.getElementById('inpLinkReport').value = comp.linkReport || '';
+                const company = appData.companies.find(c => c.id === companyId);
+                if (!company) return;
 
-                    renderYearlyBreakdownInModal(comp);
+                document.getElementById('editCompanyId').value = company.id;
+                document.getElementById('modalCompanyNameTitle').textContent = company.name;
+
+                document.getElementById('inpCompName').value = company.name || '';
+                document.getElementById('inpCompActive').value = company.active !== false ? 'true' : 'false';
+                
+                const btnDelete = document.getElementById('btnDeleteCompany');
+                const deleteNotice = document.getElementById('deleteNoticeText');
+                if (btnDelete && deleteNotice) {
+                    if (company.active === false) {
+                        btnDelete.classList.remove('hidden');
+                        deleteNotice.classList.add('hidden');
+                    } else {
+                        btnDelete.classList.add('hidden');
+                        deleteNotice.classList.remove('hidden');
+                    }
                 }
-                setEditMode(false);
+
+                document.getElementById('inpContractName').value = company.contractName || '';
+                document.getElementById('inpCompPhone').value = company.phone || '';
+                document.getElementById('inpCompEmail').value = company.email || '';
+                document.getElementById('inpCompOrg').value = company.orgName || '';
+                document.getElementById('inpCompAddress').value = company.address || '';
+                document.getElementById('inpCompDescription').value = company.description || '';
+                document.getElementById('inpCompCategory').value = company.category || appData.settings.categories[0];
+                document.getElementById('inpCompDepartment').value = company.department || appData.settings.departments[0];
+                document.getElementById('inpCompContractType').value = company.contractType || appData.settings.contractTypes[0];
+                document.getElementById('inpCompStartDate').value = company.startDate || '';
+                document.getElementById('inpCompDuration').value = company.durationMonths || 12;
+                document.getElementById('inpCompCompulsory').value = company.compulsory || 'Nee';
+                                
+                document.getElementById('inpLinkContract').value = company.linkContract || '';
+                document.getElementById('inpLinkReport').value = company.linkReport || '';
+                renderShortcutButtons(company.linkContract, company.linkReport);
+
+                renderYearlyBreakdownCards(company.yearlyData || {});
             } else {
                 document.getElementById('editCompanyId').value = '';
                 document.getElementById('modalCompanyNameTitle').textContent = 'Nieuw Bedrijf Opvoeren';
-                renderYearlyBreakdownInModal(null);
-                setEditMode(true);
+                document.getElementById('inpCompActive').value = 'true';
+
+                const btnDelete = document.getElementById('btnDeleteCompany');
+                const deleteNotice = document.getElementById('deleteNoticeText');
+                if (btnDelete) btnDelete.classList.add('hidden');
+                if (deleteNotice) deleteNotice.classList.remove('hidden');
+
+                document.getElementById('inpLinkContract').value = '';
+                document.getElementById('inpLinkReport').value = '';
+                renderShortcutButtons('', '');
+                renderYearlyBreakdownCards({});
             }
 
+            const modal = document.getElementById('companyModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
 
-        function closeCompanyModal() {
-            const modal = document.getElementById('companyModal');
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
+        function deleteCurrentCompany() {
+            const compId = document.getElementById('editCompanyId').value;
+            if (!compId) return;
+
+            const comp = appData.companies.find(c => c.id === compId);
+            if (!comp) return;
+
+            if (comp.active !== false) {
+                alert('Alleen inactieve bedrijven kunnen worden verwijderd.');
+                return;
+            }
+
+            if (confirm(`Weet je zeker dat je het inactieve bedrijf "${comp.name}" definitief wilt verwijderen uit het systeem?`)) {
+                appData.companies = appData.companies.filter(c => c.id !== compId);
+                selectedCompanyIds.delete(compId);
+
+                saveData();
+                closeCompanyModal();
+                refreshDashboard();
+            }
         }
 
-        function setEditMode(enable) {
-            isEditMode = enable;
-            document.querySelectorAll('.inp-editable').forEach(el => el.disabled = !enable);
-            
-            const btnSave = document.getElementById('btnSaveCompany');
-            const btnToggle = document.getElementById('btnToggleEditModeText');
+        function closeCompanyModal() {
+            const modal = document.getElementById('companyModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
 
-            if (enable) {
+        function renderShortcutButtons(contractUrl, reportUrl) {
+            const containerContract = document.getElementById('btnContainerContract');
+            const containerReport = document.getElementById('btnContainerReport');
+            if (!containerContract || !containerReport) return;
+
+            if (contractUrl && contractUrl.trim() !== '') {
+                containerContract.innerHTML = `
+                    <a href="${escapeHtml(contractUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-semibold rounded-lg border border-brand-200 transition-colors">
+                        <i class="fa-solid fa-external-link-alt text-[10px]"></i> Open Contract
+                    </a>
+                `;
+            } else {
+                containerContract.innerHTML = `<span class="text-[11px] text-slate-400 italic">Geen link ingesteld</span>`;
+            }
+
+            if (reportUrl && reportUrl.trim() !== '') {
+                containerReport.innerHTML = `
+                    <a href="${escapeHtml(reportUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 transition-colors">
+                        <i class="fa-solid fa-external-link-alt text-[10px]"></i> Open Rapport
+                    </a>
+                `;
+            } else {
+                containerReport.innerHTML = `<span class="text-[11px] text-slate-400 italic">Geen link ingesteld</span>`;
+            }
+        }
+
+        function setCompanyModalEditState(isEditing) {
+            const inputs = document.querySelectorAll('.inp-editable');
+            inputs.forEach(inp => {
+                inp.disabled = !isEditing;
+            });
+
+            const btnSave = document.getElementById('btnSaveCompany');
+            const btnText = document.getElementById('btnToggleEditModeText');
+
+            if (isEditing) {
                 btnSave.classList.remove('hidden');
-                btnToggle.textContent = 'Annuleer';
+                btnText.textContent = 'Leesmodus';
             } else {
                 btnSave.classList.add('hidden');
-                btnToggle.textContent = 'Bewerken';
+                btnText.textContent = 'Bewerken';
             }
         }
 
         function toggleEditMode() {
-            setEditMode(!isEditMode);
+            const btnSave = document.getElementById('btnSaveCompany');
+            const isCurrentlyEditing = !btnSave.classList.contains('hidden');
+            setCompanyModalEditState(!isCurrentlyEditing);
         }
 
-        function renderYearlyBreakdownInModal(company) {
+        function populateDropdownOptions() {
+            const catSel = document.getElementById('inpCompCategory');
+            const deptSel = document.getElementById('inpCompDepartment');
+            const typeSel = document.getElementById('inpCompContractType');
+            if (!catSel || !deptSel || !typeSel) return;
+
+            catSel.innerHTML = appData.settings.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            deptSel.innerHTML = appData.settings.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+            typeSel.innerHTML = appData.settings.contractTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+        }
+
+        function renderYearlyBreakdownCards(yearlyData) {
             const container = document.getElementById('yearlyBreakdownContainer');
-            container.innerHTML = appData.settings.years.map(year => {
-                const yData = (company && company.yearlyData && company.yearlyData[year]) || { contractCost: 0, extraCost: 0, poNumbers: '', verified: false };
-                return `
-                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 ${yData.verified ? 'year-card-verified' : ''}">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="font-bold text-xs text-slate-800">${year}</span>
-                            <label class="flex items-center space-x-1.5 cursor-pointer text-xs text-slate-600">
-                                <input type="checkbox" name="verified_${year}" ${yData.verified ? 'checked' : ''} class="inp-editable rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" ${!isEditMode ? 'disabled' : ''}>
-                                <span>Geverifieerd</span>
-                            </label>
+            if (!container) return;
+            container.innerHTML = '';
+
+            appData.settings.years.forEach(yr => {
+                const yrData = yearlyData[yr] || {
+                    contractAmount: 0,
+                    yearType: 'Boekjaar',
+                    poNumber: '',
+                    verified: false,
+                    extraCosts: []
+                };
+
+                const card = document.createElement('div');
+                card.id = `year-card-${yr}`;
+                card.className = `p-4 rounded-xl border transition-all ${yrData.verified ? 'year-card-verified border-emerald-300' : 'bg-slate-50 border-slate-200/80'}`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="yr-verified-${yr}" onchange="toggleYearVerified('${yr}', this.checked)" ${yrData.verified ? 'checked' : ''} class="inp-editable rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                            <label for="yr-verified-${yr}" class="font-bold text-sm text-slate-800 cursor-pointer">Jaar ${yr}</label>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Contract Kosten (€)</label>
-                                <input type="number" step="0.01" name="cost_${year}" value="${yData.contractCost || 0}" class="inp-editable w-full px-2 py-1 text-xs bg-white border border-slate-200 rounded-lg" ${!isEditMode ? 'disabled' : ''}>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Extra Kosten (€)</label>
-                                <input type="number" step="0.01" name="extracost_${year}" value="${yData.extraCost || 0}" class="inp-editable w-full px-2 py-1 text-xs bg-white border border-slate-200 rounded-lg" ${!isEditMode ? 'disabled' : ''}>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">PO Nummer(s)</label>
-                                <input type="text" name="po_${year}" value="${yData.poNumbers || ''}" class="inp-editable w-full px-2 py-1 text-xs bg-white border border-slate-200 rounded-lg font-mono" ${!isEditMode ? 'disabled' : ''}>
-                            </div>
+                        <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Financiële gegevens</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Contract Bedrag (€)</label>
+                            <input type="number" step="0.01" id="yr-amt-${yr}" value="${yrData.contractAmount || 0}" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Type Jaar</label>
+                            <select id="yr-type-${yr}" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                <option value="Boekjaar" ${yrData.yearType === 'Boekjaar' ? 'selected' : ''}>Boekjaar (100%)</option>
+                                <option value="Kalenderjaar" ${yrData.yearType === 'Kalenderjaar' ? 'selected' : ''}>Kalenderjaar (9/12 split)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">PO Nummer(s)</label>
+                            <input type="text" id="yr-po-${yr}" value="${escapeHtml(yrData.poNumber || '')}" placeholder="bijv. PO-2026-001" class="inp-editable w-full px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                         </div>
                     </div>
+
+                    <div class="bg-white/80 p-3 rounded-lg border border-slate-200/60">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[11px] font-bold text-slate-700">Extra Kosten Voor Jaar ${yr}</span>
+                            <button type="button" onclick="addExtraCostLine('${yr}')" class="inp-editable text-[11px] text-brand-600 hover:text-brand-800 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Regel Toevoegen
+                            </button>
+                        </div>
+                        <div id="extra-costs-list-${yr}" class="space-y-2"></div>
+                    </div>
                 `;
-            }).join('');
+                container.appendChild(card);
+
+                if (Array.isArray(yrData.extraCosts)) {
+                    yrData.extraCosts.forEach(ex => addExtraCostLine(yr, ex));
+                }
+            });
         }
 
-        async function saveCompanyData(e) {
-            e.preventDefault();
+        function toggleYearVerified(yr, isChecked) {
+            const card = document.getElementById(`year-card-${yr}`);
+            if (card) {
+                if (isChecked) {
+                    card.classList.add('year-card-verified', 'border-emerald-300');
+                    card.classList.remove('bg-slate-50', 'border-slate-200/80');
+                } else {
+                    card.classList.remove('year-card-verified', 'border-emerald-300');
+                    card.classList.add('bg-slate-50', 'border-slate-200/80');
+                }
+            }
+        }
+
+        function addExtraCostLine(yr, data = null) {
+            const container = document.getElementById(`extra-costs-list-${yr}`);
+            if (!container) return;
+
+            const rowId = 'ex_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const row = document.createElement('div');
+            row.id = rowId;
+            row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200/60 text-xs';
+
+            const catOptions = appData.settings.categories.map(c => `<option value="${c}" ${data && data.category === c ? 'selected' : ''}>${c}</option>`).join('');
+
+            row.innerHTML = `
+                <div class="col-span-3">
+                    <input type="text" placeholder="Omschrijving..." value="${escapeHtml(data ? data.description || '' : '')}" class="inp-editable ex-desc w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-3">
+                    <select class="inp-editable ex-cat w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                        ${catOptions}
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <input type="number" step="0.01" placeholder="Bedrag (€)" value="${data ? data.amount || '' : ''}" class="inp-editable ex-amt w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-3">
+                    <input type="text" placeholder="PO nummer..." value="${escapeHtml(data ? data.poNumber || '' : '')}" class="inp-editable ex-po w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                </div>
+                <div class="col-span-1 text-right">
+                    <button type="button" onclick="document.getElementById('${rowId}').remove()" class="inp-editable text-slate-400 hover:text-rose-600 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+
+            const btnSave = document.getElementById('btnSaveCompany');
+            const isEditing = btnSave && !btnSave.classList.contains('hidden');
+            row.querySelectorAll('.inp-editable').forEach(inp => inp.disabled = !isEditing);
+        }
+
+        function saveCompanyData(event) {
+            event.preventDefault();
+
             const compId = document.getElementById('editCompanyId').value;
-            
+            const name = document.getElementById('inpCompName').value.trim();
+
+            if (!name) {
+                alert('Vul a.u.b. een bedrijfsnaam in.');
+                return;
+            }
+
+            if (!compId) {
+                const exists = appData.companies.some(c => c.name.toLowerCase() === name.toLowerCase());
+                if (exists) {
+                    alert(`Een bedrijf met de naam "${name}" bestaat al in het systeem.`);
+                    return;
+                }
+            }
+
             const yearlyData = {};
-            appData.settings.years.forEach(year => {
-                yearlyData[year] = {
-                    contractCost: parseFloat(document.querySelector(`[name="cost_${year}"]`)?.value || 0),
-                    extraCost: parseFloat(document.querySelector(`[name="extracost_${year}"]`)?.value || 0),
-                    poNumbers: document.querySelector(`[name="po_${year}"]`)?.value || '',
-                    verified: document.querySelector(`[name="verified_${year}"]`)?.checked || false
+            appData.settings.years.forEach(yr => {
+                const verified = document.getElementById(`yr-verified-${yr}`)?.checked || false;
+                const amt = parseFloat(document.getElementById(`yr-amt-${yr}`)?.value) || 0;
+                const yearType = document.getElementById(`yr-type-${yr}`)?.value || 'Boekjaar';
+                const poNumber = document.getElementById(`yr-po-${yr}`)?.value || '';
+
+                const extraCosts = [];
+                const extraContainer = document.getElementById(`extra-costs-list-${yr}`);
+                if (extraContainer) {
+                    extraContainer.querySelectorAll('[id^="ex_"]').forEach(row => {
+                        const desc = row.querySelector('.ex-desc')?.value || '';
+                        const cat = row.querySelector('.ex-cat')?.value || '';
+                        const amount = parseFloat(row.querySelector('.ex-amt')?.value) || 0;
+                        const po = row.querySelector('.ex-po')?.value || '';
+                        if (amount > 0 || desc) {
+                            extraCosts.push({ description: desc, category: cat, amount: amount, poNumber: po });
+                        }
+                    });
+                }
+
+                yearlyData[yr] = {
+                    contractAmount: amt,
+                    yearType: yearType,
+                    poNumber: poNumber,
+                    verified: verified,
+                    extraCosts: extraCosts
                 };
             });
 
             const companyPayload = {
                 id: compId || 'comp_' + Date.now(),
-                name: document.getElementById('inpCompName').value,
+                name: name,
                 active: document.getElementById('inpCompActive').value === 'true',
                 contractName: document.getElementById('inpContractName').value,
                 phone: document.getElementById('inpCompPhone').value,
                 email: document.getElementById('inpCompEmail').value,
-                organization: document.getElementById('inpCompOrg').value,
+                orgName: document.getElementById('inpCompOrg').value,
                 address: document.getElementById('inpCompAddress').value,
                 description: document.getElementById('inpCompDescription').value,
                 category: document.getElementById('inpCompCategory').value,
                 department: document.getElementById('inpCompDepartment').value,
                 contractType: document.getElementById('inpCompContractType').value,
                 startDate: document.getElementById('inpCompStartDate').value,
-                duration: document.getElementById('inpCompDuration').value,
+                
+                linkContract: document.getElementById('inpLinkContract').value.trim(),
+                linkReport: document.getElementById('inpLinkReport').value.trim(),
+
+                durationMonths: parseInt(document.getElementById('inpCompDuration').value, 10) || 12,
                 compulsory: document.getElementById('inpCompCompulsory').value,
-                linkContract: document.getElementById('inpLinkContract').value,
-                linkReport: document.getElementById('inpLinkReport').value,
-                yearlyData
+                yearlyData: yearlyData
             };
 
             if (compId) {
@@ -829,94 +1432,285 @@
                 appData.companies.push(companyPayload);
             }
 
+            saveData();
             closeCompanyModal();
-            renderCompanyTable();
-            await saveDataToCloud();
+            refreshDashboard();
         }
 
-        // Settings / Management Modal
         function openSettingsModal() {
-            renderSettingsModalLists();
+            renderListOptionTags('contractTypes', 'listContractTypes');
+            renderListOptionTags('categories', 'listCategories');
+            renderListOptionTags('departments', 'listDepartments');
+            renderBudgetSettingsTable();
+
             const modal = document.getElementById('settingsModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
         }
 
         function closeSettingsModal() {
             const modal = document.getElementById('settingsModal');
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+            saveData();
+            populateYearDropdowns();
+            refreshDashboard();
         }
 
-        function renderSettingsModalLists() {
-            const renderChips = (listKey, containerId) => {
-                const container = document.getElementById(containerId);
-                container.innerHTML = appData.settings[listKey].map(item => `
-                    <span class="inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
-                        ${item}
-                        <button onclick="removeListOption('${listKey}', '${item}')" class="ml-1.5 text-slate-400 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
-                    </span>
-                `).join('');
-            };
-
-            renderChips('contractTypes', 'listContractTypes');
-            renderChips('categories', 'listCategories');
-            renderChips('departments', 'listDepartments');
-
-            const budgetsContainer = document.getElementById('settingsBudgetsContainer');
-            budgetsContainer.innerHTML = appData.settings.years.map(year => `
-                <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
-                    <span class="text-xs font-bold text-slate-700">${year}</span>
-                    <input type="number" value="${appData.settings.budgets[year] || 0}" onchange="updateYearBudget(${year}, this.value)" class="w-28 px-2 py-1 text-xs border border-slate-200 rounded text-right">
-                </div>
-            `).join('');
+        function renderListOptionTags(key, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            appData.settings[key].forEach(opt => {
+                const tag = document.createElement('span');
+                tag.className = 'inline-flex items-center space-x-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-sm';
+                tag.innerHTML = `
+                    <span>${escapeHtml(opt)}</span>
+                    <button type="button" onclick="removeListOption('${key}', '${escapeJsStr(opt)}')" class="text-slate-400 hover:text-rose-600 transition-colors ml-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+                container.appendChild(tag);
+            });
         }
 
-        async function addListOption(listKey, inputId) {
+        function addListOption(key, inputId) {
             const input = document.getElementById(inputId);
+            if (!input) return;
             const val = input.value.trim();
-            if (val && !appData.settings[listKey].includes(val)) {
-                appData.settings[listKey].push(val);
+            if (!val) return;
+
+            if (!appData.settings[key].includes(val)) {
+                appData.settings[key].push(val);
                 input.value = '';
-                populateDropdowns();
-                renderSettingsModalLists();
-                await saveDataToCloud();
+                renderListOptionTags(key, key === 'contractTypes' ? 'listContractTypes' : key === 'categories' ? 'listCategories' : 'listDepartments');
             }
         }
 
-        async function removeListOption(listKey, value) {
-            appData.settings[listKey] = appData.settings[listKey].filter(i => i !== value);
-            populateDropdowns();
-            renderSettingsModalLists();
-            await saveDataToCloud();
+        function removeListOption(key, val) {
+            appData.settings[key] = appData.settings[key].filter(x => x !== val);
+            renderListOptionTags(key, key === 'contractTypes' ? 'listContractTypes' : key === 'categories' ? 'listCategories' : 'listDepartments');
         }
 
-        async function updateYearBudget(year, value) {
-            appData.settings.budgets[year] = parseFloat(value) || 0;
-            renderCompanyTable();
-            await saveDataToCloud();
+        function renderBudgetSettingsTable() {
+            const tbody = document.getElementById('budgetSettingsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            appData.settings.years.forEach(yr => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-slate-800">${yr}</td>
+                    <td class="p-2">
+                        <input type="number" id="budget-input-${yr}" value="${appData.settings.budgets[yr] || 0}" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                    </td>
+                    <td class="p-2 text-right">
+                        <button onclick="saveSingleBudget(${yr})" class="bg-brand-600 hover:bg-brand-500 text-white px-2 py-1 rounded text-[11px] font-semibold">Opslaan</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function saveSingleBudget(yr) {
+            const val = parseFloat(document.getElementById(`budget-input-${yr}`)?.value) || 0;
+            appData.settings.budgets[yr] = val;
+            saveData();
+            alert(`Budget voor jaar ${yr} opgeslagen op € ${val.toLocaleString('nl-NL')}`);
+        }
+
+        function addNewYearSetting() {
+            const yrInput = document.getElementById('newYearInput');
+            const budgetInput = document.getElementById('newYearBudgetInput');
+            if (!yrInput || !budgetInput) return;
+
+            const yr = parseInt(yrInput.value, 10);
+            const budget = parseFloat(budgetInput.value) || 0;
+
+            if (!yr || yr < 2000 || yr > 2100) {
+                alert('Voer a.u.b. een geldig jaartal in (bijv. 2028).');
+                return;
+            }
+
+            if (!appData.settings.years.includes(yr)) {
+                appData.settings.years.push(yr);
+                appData.settings.years.sort();
+            }
+
+            appData.settings.budgets[yr] = budget;
+
+            yrInput.value = '';
+            budgetInput.value = '';
+
+            renderBudgetSettingsTable();
+            saveData();
+            populateYearDropdowns();
         }
 
         function openReportModal() {
-            const wb = XLSX.utils.book_new();
-            const exportData = appData.companies.map(c => {
-                const costs = calculateCompanyYearlyCosts(c, appData.activeYear);
-                return {
-                    'Bedrijfsnaam': c.name,
-                    'Omschrijving': c.description || '',
-                    'Categorie': c.category || '',
-                    'Afdeling': c.department || '',
-                    'Contract Type': c.contractType || '',
-                    'Kosten Contract': costs.contractCost,
-                    'Extra Kosten': costs.extraCost,
-                    'Totaal Kosten': costs.total,
-                    'PO Nummer(s)': (c.yearlyData && c.yearlyData[appData.activeYear]?.poNumbers) || ''
-                };
-            });
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            XLSX.utils.book_append_sheet(wb, ws, `Contracten ${appData.activeYear}`);
-            XLSX.writeFile(wb, `Contracten_Overzicht_${appData.activeYear}.xlsx`);
+            const modal = document.getElementById('reportModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
         }
+
+        function closeReportModal() {
+            const modal = document.getElementById('reportModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function exportToExcel() {
+            const curYear = appData.activeYear;
+            const rows = [];
+
+            appData.companies.forEach(comp => {
+                const costs = calculateCompanyYearlyCosts(comp, curYear);
+                const yearInfo = (comp.yearlyData && comp.yearlyData[curYear]) ? comp.yearlyData[curYear] : {};
+
+                rows.push({
+                    'Bedrijfsnaam': comp.name,
+                    'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                    'Contractnaam': comp.contractName || '',
+                    'Categorie': comp.category || '',
+                    'Afdeling': comp.department || '',
+                    'Omschrijving': comp.description || '',
+                    'Type Jaar': yearInfo.yearType || 'Boekjaar',
+                    'Kosten Contract (€)': costs.contractCost,
+                    'Extra Kosten (€)': costs.extraCost,
+                    'Totale Kosten (€)': costs.totalCost,
+                    'PO Nummer(s)': yearInfo.poNumber || ''
+                });
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, `Contracten ${curYear}`);
+
+            XLSX.writeFile(workbook, `Contracten_Overzicht_${curYear}.xlsx`);
+        }
+
+        function downloadExcelTemplate() {
+            const sampleData = [
+                {
+                    'Bedrijfsnaam': 'Voorbeeld Bedrijf A',
+                    'Contractnaam': 'Onderhoud Contract',
+                    'Categorie': 'Fixed',
+                    'Afdeling': 'General',
+                    'Telefoon': '0612345678',
+                    'Email': 'info@voorbeeld.nl',
+                    'Omschrijving': 'Regulier onderhoud pand',
+                    'Contractbedrag': 12000,
+                    'Type Jaar': 'Boekjaar',
+                    'PO Nummer': 'PO-2026-99'
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(sampleData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Import Sjabloon");
+
+            XLSX.writeFile(wb, "Contracten_Import_Sjabloon.xlsx");
+        }
+
+        function importExcelFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.SheetNames[0];
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+
+                    let importedCount = 0;
+                    let skippedCount = 0;
+                    const curYear = appData.activeYear;
+
+                    jsonData.forEach(row => {
+                        const name = row['Bedrijfsnaam'] || row['bedrijfsnaam'] || row['Name'] || row['name'];
+                        if (!name) return;
+
+                        const exists = appData.companies.some(c => c.name.trim().toLowerCase() === String(name).trim().toLowerCase());
+                        if (exists) {
+                            skippedCount++;
+                            return;
+                        }
+
+                        const contractAmt = parseFloat(row['Contractbedrag'] || row['bedrag'] || row['Amount']) || 0;
+                        const yearType = row['Type Jaar'] || 'Boekjaar';
+                        const poNum = row['PO Nummer'] || row['PO'] || '';
+
+                        const yearlyData = {};
+                        yearlyData[curYear] = {
+                            contractAmount: contractAmt,
+                            yearType: yearType,
+                            poNumber: String(poNum),
+                            verified: false,
+                            extraCosts: []
+                        };
+
+                        const newCompany = {
+                            id: 'comp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                            name: String(name).trim(),
+                            active: true,
+                            contractName: row['Contractnaam'] || '',
+                            phone: row['Telefoon'] || '',
+                            email: row['Email'] || '',
+                            description: row['Omschrijving'] || '',
+                            category: row['Categorie'] || appData.settings.categories[0],
+                            department: row['Afdeling'] || appData.settings.departments[0],
+                            contractType: appData.settings.contractTypes[0],
+                            durationMonths: 12,
+                            compulsory: 'Nee',
+                            yearlyData: yearlyData
+                        };
+
+                        appData.companies.push(newCompany);
+                        importedCount++;
+                    });
+
+                    saveData();
+                    refreshDashboard();
+                    closeReportModal();
+
+                    alert(`Import voltooid!\n- Nieuwe bedrijven geïmporteerd: ${importedCount}\n- Dubbele bedrijven overgeslagen: ${skippedCount}`);
+
+                } catch (err) {
+                    alert('Fout bij het inlezen van het Excel-bestand. Controleer het bestandsformaat.');
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeJsStr(str) {
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initSystem();
+        });
     </script>
 </body>
 </html>
