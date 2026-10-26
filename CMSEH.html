@@ -1723,23 +1723,72 @@
             const rows = [];
 
             appData.companies.forEach(comp => {
-                const costs = calculateCompanyYearlyCosts(comp, curYear);
-                const yearInfo = (comp.yearlyData && comp.yearlyData[curYear]) ? comp.yearlyData[curYear] : {};
-                const poNumbers = getCompanyYearPoNumbers(yearInfo);
+                const yearInfo = (comp.yearlyData && (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)])) ? (comp.yearlyData[curYear] || comp.yearlyData[String(curYear)]) : {};
+                const yearType = yearInfo.yearType || 'Boekjaar';
+                let contractFactor = (yearType === 'Kalenderjaar') ? (9 / 12) : 1;
 
-                rows.push({
-                    'Bedrijfsnaam': comp.name,
-                    'Status': comp.active !== false ? 'Actief' : 'Inactief',
-                    'Contractnaam': comp.contractName || '',
-                    'Categorie': comp.category || '',
-                    'Afdeling': comp.department || '',
-                    'Omschrijving': comp.description || '',
-                    'Type Jaar': yearInfo.yearType || 'Boekjaar',
-                    'Kosten Contract (€)': costs.contractCost,
-                    'Extra Kosten (€)': costs.extraCost,
-                    'Totale Kosten (€)': costs.totalCost,
-                    'PO Nummer(s)': poNumbers
-                });
+                // 1. Voeg alle afzonderlijke contractregels toe
+                let itemsToExport = yearInfo.contractItems || [];
+                if (itemsToExport.length === 0 && (yearInfo.contractAmount > 0 || yearInfo.poNumber)) {
+                    itemsToExport = [{ description: comp.contractName || 'Contract', amount: yearInfo.contractAmount, poNumber: yearInfo.poNumber || '' }];
+                }
+
+                if (itemsToExport.length > 0) {
+                    itemsToExport.forEach(ci => {
+                        const rawAmt = parseFloat(ci.amount) || 0;
+                        const finalAmt = rawAmt * contractFactor;
+                        rows.push({
+                            'Bedrijfsnaam': comp.name,
+                            'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                            'Type Regel': 'Contractregel',
+                            'Omschrijving / Contractnaam': ci.description || comp.contractName || '-',
+                            'Categorie': comp.category || '',
+                            'Afdeling': comp.department || '',
+                            'Type Jaar': yearType,
+                            'Bedrag (€)': finalAmt,
+                            'PO Nummer': ci.poNumber || '-'
+                        });
+                    });
+                }
+
+                // 2. Voeg alle afzonderlijke extra kosten toe
+                if (Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0) {
+                    yearInfo.extraCosts.forEach(ex => {
+                        const exAmt = parseFloat(ex.amount) || 0;
+                        const exCat = ex.category || 'Overig';
+                        let exFinalAmt = exAmt;
+                        if (exCat !== 'Fixed extra') {
+                            exFinalAmt = exAmt * contractFactor;
+                        }
+
+                        rows.push({
+                            'Bedrijfsnaam': comp.name,
+                            'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                            'Type Regel': 'Extra Kosten',
+                            'Omschrijving / Contractnaam': ex.description || 'Extra kosten',
+                            'Categorie': exCat,
+                            'Afdeling': comp.department || '',
+                            'Type Jaar': yearType,
+                            'Bedrag (€)': exFinalAmt,
+                            'PO Nummer': ex.poNumber || '-'
+                        });
+                    });
+                }
+
+                // Als er helemaal geen contract- of extra kostenregels zijn voor dit jaar, toch een lege basisregel tonen
+                if (itemsToExport.length === 0 && (!Array.isArray(yearInfo.extraCosts) || yearInfo.extraCosts.length === 0)) {
+                    rows.push({
+                        'Bedrijfsnaam': comp.name,
+                        'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                        'Type Regel': 'Geen kosten',
+                        'Omschrijving / Contractnaam': '-',
+                        'Categorie': comp.category || '',
+                        'Afdeling': comp.department || '',
+                        'Type Jaar': yearType,
+                        'Bedrag (€)': 0,
+                        'PO Nummer': '-'
+                    });
+                }
             });
 
             const worksheet = XLSX.utils.json_to_sheet(rows);
