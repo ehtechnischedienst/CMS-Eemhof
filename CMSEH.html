@@ -44,6 +44,28 @@
 </head>
 <body class="h-full flex flex-col text-slate-800 bg-slate-100">
 
+    <!-- Pincode Login Overlay -->
+    <div id="pinLoginModal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 p-8 text-center space-y-6">
+            <div class="inline-flex bg-brand-50 text-brand-600 p-4 rounded-2xl text-2xl shadow-inner">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">Beveiligde Toegang</h2>
+                <p class="text-xs text-slate-500 mt-1">Voer de pincode in om toegang te krijgen tot het Contract Management Systeem.</p>
+            </div>
+            <form onsubmit="verifyPinCode(event)" class="space-y-4">
+                <div>
+                    <input type="password" id="pinInput" maxlength="10" placeholder="Voer pincode in..." autofocus class="w-full px-4 py-3 text-center text-lg tracking-widest bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 font-bold">
+                    <p id="pinErrorText" class="text-xs text-rose-600 font-semibold mt-2 hidden">Onjuiste pincode, probeer het opnieuw.</p>
+                </div>
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-brand-500/25 text-sm">
+                    Inloggen
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Header Navigation -->
     <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -400,7 +422,7 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-base">Beheer &amp; Instellingen</h3>
-                        <p class="text-xs text-slate-400">Beheer categorieën, afdelingen, contractsoorten, jaartallen en budgetten</p>
+                        <p class="text-xs text-slate-400">Beheer pincode, categorieën, afdelingen, contractsoorten, jaartallen en budgetten</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
@@ -409,6 +431,17 @@
             </div>
 
             <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                <!-- Pincode Instelling -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        <i class="fa-solid fa-lock text-brand-500 mr-1.5"></i> Systeem Pincode Beheren
+                    </h4>
+                    <div class="flex gap-2 items-center">
+                        <input type="text" id="settingPinInput" placeholder="Nieuwe pincode..." class="w-48 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
+                        <button onclick="saveNewPinCode()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Pincode Opslaan</button>
+                    </div>
+                </div>
+
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                         <span><i class="fa-solid fa-tags text-brand-500 mr-1.5"></i> Contractsoorten</span>
@@ -524,6 +557,7 @@
         let appData = {
             activeYear: new Date().getFullYear(),
             settings: {
+                pinCode: '389601',
                 years: [2023, 2024, 2025, 2026, 2027],
                 budgets: {
                     2023: 100000,
@@ -568,6 +602,9 @@
                         appData.settings.yearVisibility = {};
                         appData.settings.years.forEach(yr => appData.settings.yearVisibility[yr] = true);
                     }
+                    if (!appData.settings.pinCode) {
+                        appData.settings.pinCode = '389601';
+                    }
                 } else {
                     await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
                 }
@@ -594,6 +631,21 @@
 
             populateYearDropdowns();
             refreshDashboard();
+        }
+
+        function verifyPinCode(event) {
+            event.preventDefault();
+            const enteredPin = document.getElementById('pinInput').value.trim();
+            const correctPin = appData.settings.pinCode || '389601';
+            const errorEl = document.getElementById('pinErrorText');
+
+            if (enteredPin === correctPin) {
+                const modal = document.getElementById('pinLoginModal');
+                modal.classList.add('hidden');
+            } else {
+                errorEl.classList.remove('hidden');
+                document.getElementById('pinInput').value = '';
+            }
         }
 
         async function saveData() {
@@ -1237,7 +1289,6 @@
             typeSel.innerHTML = appData.settings.contractTypes.map(t => `<option value="${t}">${t}</option>`).join('');
         }
 
-        // Rendert uitsluitend de jaren waarvan de zichtbaarheid op 'true' staat in de bedrijfsmodal
         function renderYearlyBreakdownCards(yearlyData, defaultContractName = '') {
             const container = document.getElementById('yearlyBreakdownContainer');
             if (!container) return;
@@ -1245,7 +1296,6 @@
 
             const fallbackName = defaultContractName.trim() !== '' ? defaultContractName : 'Contract';
 
-            // Filter alleen zichtbare jaren
             const visibleYears = appData.settings.years.filter(yr => !appData.settings.yearVisibility || appData.settings.yearVisibility[yr] !== false);
 
             if (visibleYears.length === 0) {
@@ -1512,6 +1562,9 @@
             renderListOptionTags('departments', 'listDepartments');
             renderBudgetSettingsTable();
 
+            const pinInput = document.getElementById('settingPinInput');
+            if (pinInput) pinInput.value = appData.settings.pinCode || '389601';
+
             const modal = document.getElementById('settingsModal');
             if (modal) {
                 modal.classList.remove('hidden');
@@ -1528,6 +1581,17 @@
             saveData();
             populateYearDropdowns();
             refreshDashboard();
+        }
+
+        function saveNewPinCode() {
+            const newPin = document.getElementById('settingPinInput')?.value.trim();
+            if (!newPin) {
+                alert('Voer een geldige pincode in.');
+                return;
+            }
+            appData.settings.pinCode = newPin;
+            saveData();
+            alert('Pincode succesvol gewijzigd en opgeslagen!');
         }
 
         function renderListOptionTags(key, containerId) {
