@@ -89,7 +89,8 @@
                     <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
                         <i class="fa-solid fa-calendar-days text-brand-500 text-sm"></i>
                         <span class="text-xs text-slate-400 font-medium">Actief Jaar:</span>
-                        <select id="globalYearSelect" onchange="changeActiveYear(this.value)" class="bg-transparent text-white text-sm font-bold focus:outline-none cursor-pointer">
+                        <!-- Aangepast: bg-slate-900 en text-white voor goed leesbare opties -->
+                        <select id="globalYearSelect" onchange="changeActiveYear(this.value)" class="bg-slate-900 text-white text-sm font-bold focus:outline-none cursor-pointer rounded px-1 py-0.5">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
@@ -1926,7 +1927,7 @@
             return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
         }
 
-        // Direct opstarten van het systeem zodra dit script geladen is
+        // Direct opstarten van het systeem zodرا dit script geladen is
         initSystem();
     </script>
 </body>
