@@ -629,8 +629,19 @@
                 appData.activeYear = firstVisible || currentYear;
             }
 
+            sortCompaniesAlphabetically();
             populateYearDropdowns();
             refreshDashboard();
+        }
+
+        function sortCompaniesAlphabetically() {
+            if (Array.isArray(appData.companies)) {
+                appData.companies.sort((a, b) => {
+                    const nameA = (a.name || '').toLowerCase();
+                    const nameB = (b.name || '').toLowerCase();
+                    return nameA.localeCompare(nameB, 'nl', { numeric: true });
+                });
+            }
         }
 
         function verifyPinCode(event) {
@@ -649,6 +660,7 @@
         }
 
         async function saveData() {
+            sortCompaniesAlphabetically();
             const syncEl = document.getElementById('syncStatus');
             if (syncEl) {
                 syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
@@ -795,6 +807,7 @@
         }
 
         function refreshDashboard() {
+            sortCompaniesAlphabetically();
             const curYear = appData.activeYear;
             const budget = appData.settings.budgets[curYear] || 0;
 
@@ -888,6 +901,7 @@
         }
 
         function renderCompanyTable() {
+            sortCompaniesAlphabetically();
             const tbody = document.getElementById('companyTableBody');
             if (!tbody) return;
             tbody.innerHTML = '';
@@ -1551,6 +1565,7 @@
                 appData.companies.push(companyPayload);
             }
 
+            sortCompaniesAlphabetically();
             saveData();
             closeCompanyModal();
             refreshDashboard();
@@ -1719,6 +1734,7 @@
         }
 
         function exportToExcel() {
+            sortCompaniesAlphabetically();
             const curYear = appData.activeYear;
             const rows = [];
 
@@ -1880,6 +1896,7 @@
                         importedCount++;
                     });
 
+                    sortCompaniesAlphabetically();
                     saveData();
                     refreshDashboard();
                     closeReportModal();
