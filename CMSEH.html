@@ -743,7 +743,7 @@
 
             let curData = company.yearlyData ? (company.yearlyData[targetYear] || company.yearlyData[String(targetYear)]) : null;
             
-            // Check of er direct ingevulde bedragen/regels zijn in het gekozen jaar
+            // Controleer of er contractregels of bedragen zijn ingevuld in het actieve jaar
             let rawAmtSum = 0;
             if (curData) {
                 if (Array.isArray(curData.contractItems) && curData.contractItems.length > 0) {
@@ -753,8 +753,10 @@
                 }
             }
 
-            // Als er NIETS is ingevuld in dit jaar, proberen we vorig jaar op te halen + inflatie
-            if (rawAmtSum === 0 && (!curData || !Array.isArray(curData.extraCosts) || curData.extraCosts.length === 0)) {
+            const hasExtraCur = curData && Array.isArray(curData.extraCosts) && curData.extraCosts.length > 0;
+
+            // Als zowel de contractregels als extra kosten in dit jaar 0/leeg zijn: schatten op basis van vorig jaar + inflatie
+            if (rawAmtSum === 0 && !hasExtraCur) {
                 const prevCosts = getRawCompanyYearCosts(company, prevYear, categoryFilter);
                 if (prevCosts.totalCost > 0) {
                     const inflationRate = parseFloat(appData.settings.inflationRate) || 0;
@@ -776,10 +778,20 @@
             // Normale berekening voor ingevuld jaar
             if (curData) {
                 let contractFactor = (curData.yearType === 'Kalenderjaar') ? (9 / 12) : 1;
-                const mainCat = company.category || 'Fixed';
-                const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
-                if (mainMatches) {
-                    matchedContractCost += rawAmtSum * contractFactor;
+                
+                if (Array.isArray(curData.contractItems) && curData.contractItems.length > 0) {
+                    curData.contractItems.forEach(item => {
+                        const itemAmt = parseFloat(item.amount) || 0;
+                        const mainCat = company.category || 'Fixed';
+                        if (categoryFilter === 'ALL' || mainCat === categoryFilter) {
+                            matchedContractCost += itemAmt * contractFactor;
+                        }
+                    });
+                } else {
+                    const mainCat = company.category || 'Fixed';
+                    if (categoryFilter === 'ALL' || mainCat === categoryFilter) {
+                        matchedContractCost += rawAmtSum * contractFactor;
+                    }
                 }
 
                 if (Array.isArray(curData.extraCosts)) {
@@ -1061,7 +1073,7 @@
                 if (comp.active === false) {
                     rowBgClass = 'opacity-50 bg-slate-50';
                 } else if (costs.isEstimated) {
-                    // Oranje markeringskleur voor geschatte waarden!
+                    // Oranje markeringskleur voor geschatte waarden van alle contracten samen!
                     rowBgClass = 'bg-amber-100/90 hover:bg-amber-200/90 border-l-4 border-amber-500';
                 } else if (isYearActiveForCompany) {
                     rowBgClass = 'bg-emerald-100/80 hover:bg-emerald-200/75';
