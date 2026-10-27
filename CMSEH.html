@@ -449,7 +449,7 @@
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
                         <i class="fa-solid fa-percent text-brand-500 mr-1.5"></i> Standaard Inflatiepercentage &amp; Prognose
                     </h4>
-                    <p class="text-xs text-slate-500">Stel het inflatiepercentage in en bepaal of lege jaarkosten automatisch geschat moeten worden op basis van het vorige jaar.</p>
+                    <p class="text-xs text-slate-500">Stel het inflatiepercentage in (wordt <strong>uitsluitend op contractbedragen</strong> toegepast, niet op extra kosten).</p>
                     <div class="flex flex-wrap gap-4 items-center">
                         <div class="flex gap-2 items-center">
                             <input type="number" step="0.1" id="settingInflationInput" placeholder="Bijv. 2.5" class="w-32 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
@@ -765,27 +765,28 @@
             const hasExtraCur = curData && Array.isArray(curData.extraCosts) && curData.extraCosts.length > 0;
             const inflationAllowed = appData.settings.inflationEnabled !== false;
 
-            // Als inflatieprognose aan staat EN er is niets ingevuld dit jaar: schat op basis van vorig jaar + inflatie
+            // Als inflatieprognose aan staat EN het gekozen jaar is nog leeg:
+            // bereken inflatie UITSLUITEND over het contractbedrag van vorig jaar (extra kosten worden NIET geïndexeerd!)
             if (inflationAllowed && rawAmtSum === 0 && !hasExtraCur) {
                 const prevCosts = getRawCompanyYearCosts(company, prevYear, categoryFilter);
-                if (prevCosts.totalCost > 0) {
+                if (prevCosts.contractCost > 0) {
                     const inflationRate = parseFloat(appData.settings.inflationRate) || 0;
                     const inflationFactor = 1 + (inflationRate / 100);
                     
                     matchedContractCost = prevCosts.contractCost * inflationFactor;
-                    matchedExtraCost = prevCosts.extraCost * inflationFactor;
+                    matchedExtraCost = 0; // Extra kosten horen alleen bij een specifiek jaar!
                     isEstimated = true;
 
                     return {
                         contractCost: matchedContractCost,
-                        extraCost: matchedExtraCost,
-                        totalCost: matchedContractCost + matchedExtraCost,
+                        extraCost: 0,
+                        totalCost: matchedContractCost,
                         isEstimated: true
                     };
                 }
             }
 
-            // Normale berekening voor ingevuld jaar
+            // Normale berekening voor een ingevuld jaar
             if (curData) {
                 let contractFactor = (curData.yearType === 'Kalenderjaar') ? (9 / 12) : 1;
                 
@@ -821,7 +822,7 @@
                 }
             }
 
-            // Splitboekjaar verwerking vanuit voorgaand jaar
+            // Splitboekjaar verwerking vanuit voorgaand jaar (contractbedrag)
             const prevData = company.yearlyData ? (company.yearlyData[prevYear] || company.yearlyData[String(prevYear)]) : null;
             if (prevData && prevData.yearType === 'Kalenderjaar') {
                 let prevAmtSum = 0;
@@ -1092,7 +1093,7 @@
                     costDisplayHtml = `
                         <div class="flex flex-col items-end">
                             <span class="font-bold text-amber-900">${formatCurrency(costs.totalCost)}</span>
-                            <span class="text-[9px] px-1.5 py-0.2 bg-amber-200/80 text-amber-900 rounded font-semibold border border-amber-300" title="Berekend op basis van vorig jaar + ${inflationRate}% inflatie">
+                            <span class="text-[9px] px-1.5 py-0.2 bg-amber-200/80 text-amber-900 rounded font-semibold border border-amber-300" title="Berekend op basis van vorig jaar contractbedrag + ${inflationRate}% inflatie">
                                 <i class="fa-solid fa-chart-line text-[8px] mr-1"></i>Geschat (+${inflationRate}%)
                             </span>
                         </div>
