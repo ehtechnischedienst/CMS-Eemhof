@@ -589,42 +589,52 @@
         };
 
         let selectedCompanyIds = new Set();
-        let myCategoryChart = null;
 
         async function initSystem() {
             const syncEl = document.getElementById('syncStatus');
             try {
                 if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Laden...';
                 
-                const { data, error } = await supabaseClient
-                    .from('app_data')
-                    .select('*')
-                    .eq('id', 1)
-                    .maybeSingle();
+                // Probeer data op te halen van Supabase met een korte timeout
+                const fetchPromise = supabaseClient.from('app_data').select('*').eq('id', 1).maybeSingle();
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
+                
+                const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
                 if (error) throw error;
 
                 if (data && data.payload) {
                     appData = { ...appData, ...data.payload };
-                    if (!appData.settings.yearVisibility) {
-                        appData.settings.yearVisibility = {};
-                        appData.settings.years.forEach(yr => appData.settings.yearVisibility[yr] = true);
-                    }
-                    if (!appData.settings.inflationRates) {
-                        appData.settings.inflationRates = {};
-                        appData.settings.years.forEach(yr => appData.settings.inflationRates[yr] = 2.5);
-                    }
-                    if (!appData.settings.pinCode) {
-                        appData.settings.pinCode = '389601';
-                    }
                 } else {
                     await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
                 }
 
                 if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
             } catch (e) {
-                console.error("Failed loading data from Supabase:", e);
-                if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
+                console.warn("Kon niet verbinden met Supabase, laad lokaal opgeslagen gegevens:", e);
+                if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> Offline Modus';
+                
+                // Fallback: controleer of er lokale data in de browser staat
+                const localSaved = localStorage.getItem('cms_app_data_fallback');
+                if (localSaved) {
+                    try {
+                        appData = JSON.parse(localSaved);
+                    } catch (err) {
+                        console.error("Fout bij parsen lokale data", err);
+                    }
+                }
+            }
+
+            if (!appData.settings.yearVisibility) {
+                appData.settings.yearVisibility = {};
+                appData.settings.years.forEach(yr => appData.settings.yearVisibility[yr] = true);
+            }
+            if (!appData.settings.inflationRates) {
+                appData.settings.inflationRates = {};
+                appData.settings.years.forEach(yr => appData.settings.inflationRates[yr] = 2.5);
+            }
+            if (!appData.settings.pinCode) {
+                appData.settings.pinCode = '389601';
             }
 
             const currentYear = new Date().getFullYear();
@@ -639,7 +649,7 @@
                 appData.settings.inflationRates[currentYear] = 2.5;
             }
 
-            // Automatisch selecteren van huidig jaar of eerste zichtbare jaar met data indien mogelijk
+            // Stel het actieve jaar in op het huidige jaar (of het eerste zichtbare jaar met data)
             if (!appData.activeYear || appData.settings.yearVisibility[appData.activeYear] === false) {
                 appData.activeYear = appData.settings.years.includes(currentYear) ? currentYear : (appData.settings.years[0] || currentYear);
             }
@@ -676,6 +686,10 @@
 
         async function saveData() {
             sortCompaniesAlphabetically();
+            
+            // Sla altijd direct lokaal op als backup
+            localStorage.setItem('cms_app_data_fallback', JSON.stringify(appData));
+
             const syncEl = document.getElementById('syncStatus');
             if (syncEl) {
                 syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
@@ -693,7 +707,7 @@
             } catch (e) {
                 console.error("Failed saving data to Supabase:", e);
                 if (syncEl) {
-                    syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Opslaan mislukt';
+                    syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> Lokaal Opgeslagen';
                 }
             }
         }
