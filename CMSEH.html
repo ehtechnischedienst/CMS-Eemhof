@@ -444,15 +444,21 @@
                     </div>
                 </div>
 
-                <!-- Inflatiepercentage Instelling -->
+                <!-- Inflatiepercentage & Prognose Aan/Uit Instelling -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        <i class="fa-solid fa-percent text-brand-500 mr-1.5"></i> Standaard Inflatiepercentage
+                        <i class="fa-solid fa-percent text-brand-500 mr-1.5"></i> Standaard Inflatiepercentage &amp; Prognose
                     </h4>
-                    <p class="text-xs text-slate-500">Stel hier het standaard inflatiepercentage in voor automatische indexatie bij lege jaarkosten.</p>
-                    <div class="flex gap-2 items-center">
-                        <input type="number" step="0.1" id="settingInflationInput" placeholder="Bijv. 2.5" class="w-48 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
-                        <span class="text-xs font-semibold text-slate-600">%</span>
+                    <p class="text-xs text-slate-500">Stel het inflatiepercentage in en bepaal of lege jaarkosten automatisch geschat moeten worden op basis van het vorige jaar.</p>
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div class="flex gap-2 items-center">
+                            <input type="number" step="0.1" id="settingInflationInput" placeholder="Bijv. 2.5" class="w-32 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
+                            <span class="text-xs font-semibold text-slate-600">%</span>
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                            <input type="checkbox" id="settingInflationEnabledInput" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 w-4 h-4">
+                            Automatische inflatieprognose aanzetten
+                        </label>
                         <button onclick="saveInflationRate()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Inflatie Opslaan</button>
                     </div>
                 </div>
@@ -574,6 +580,7 @@
             settings: {
                 pinCode: '389601',
                 inflationRate: 2.5, // Standaard inflatiepercentage
+                inflationEnabled: true, // Schakelaar voor inflatieprognose
                 years: [2023, 2024, 2025, 2026, 2027],
                 budgets: {
                     2023: 100000,
@@ -623,6 +630,9 @@
                     }
                     if (appData.settings.inflationRate === undefined) {
                         appData.settings.inflationRate = 2.5;
+                    }
+                    if (appData.settings.inflationEnabled === undefined) {
+                        appData.settings.inflationEnabled = true;
                     }
                 } else {
                     await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
@@ -743,7 +753,6 @@
 
             let curData = company.yearlyData ? (company.yearlyData[targetYear] || company.yearlyData[String(targetYear)]) : null;
             
-            // Controleer of er contractregels of bedragen zijn ingevuld in het actieve jaar
             let rawAmtSum = 0;
             if (curData) {
                 if (Array.isArray(curData.contractItems) && curData.contractItems.length > 0) {
@@ -754,9 +763,10 @@
             }
 
             const hasExtraCur = curData && Array.isArray(curData.extraCosts) && curData.extraCosts.length > 0;
+            const inflationAllowed = appData.settings.inflationEnabled !== false;
 
-            // Als zowel de contractregels als extra kosten in dit jaar 0/leeg zijn: schatten op basis van vorig jaar + inflatie
-            if (rawAmtSum === 0 && !hasExtraCur) {
+            // Als inflatieprognose aan staat EN er is niets ingevuld dit jaar: schat op basis van vorig jaar + inflatie
+            if (inflationAllowed && rawAmtSum === 0 && !hasExtraCur) {
                 const prevCosts = getRawCompanyYearCosts(company, prevYear, categoryFilter);
                 if (prevCosts.totalCost > 0) {
                     const inflationRate = parseFloat(appData.settings.inflationRate) || 0;
@@ -836,7 +846,6 @@
             };
         }
 
-        // Hulpfunctie voor puur de kosten van een specifiek jaar (zonder de inflatieloop)
         function getRawCompanyYearCosts(company, year, categoryFilter = 'ALL') {
             let matchedContractCost = 0;
             let matchedExtraCost = 0;
@@ -1073,7 +1082,6 @@
                 if (comp.active === false) {
                     rowBgClass = 'opacity-50 bg-slate-50';
                 } else if (costs.isEstimated) {
-                    // Oranje markeringskleur voor geschatte waarden van alle contracten samen!
                     rowBgClass = 'bg-amber-100/90 hover:bg-amber-200/90 border-l-4 border-amber-500';
                 } else if (isYearActiveForCompany) {
                     rowBgClass = 'bg-emerald-100/80 hover:bg-emerald-200/75';
@@ -1695,6 +1703,9 @@
             const inflationInput = document.getElementById('settingInflationInput');
             if (inflationInput) inflationInput.value = appData.settings.inflationRate ?? 2.5;
 
+            const inflationEnabledInput = document.getElementById('settingInflationEnabledInput');
+            if (inflationEnabledInput) inflationEnabledInput.checked = appData.settings.inflationEnabled !== false;
+
             const modal = document.getElementById('settingsModal');
             if (modal) {
                 modal.classList.remove('hidden');
@@ -1726,14 +1737,16 @@
 
         function saveInflationRate() {
             const val = parseFloat(document.getElementById('settingInflationInput')?.value);
+            const enabled = document.getElementById('settingInflationEnabledInput')?.checked ?? true;
             if (isNaN(val)) {
                 alert('Voer een geldig getal in voor de inflatie.');
                 return;
             }
             appData.settings.inflationRate = val;
+            appData.settings.inflationEnabled = enabled;
             saveData();
             refreshDashboard();
-            alert('Inflatiepercentage succesvol opgeslagen!');
+            alert('Inflatie-instellingen succesvol opgeslagen!');
         }
 
         function renderListOptionTags(key, containerId) {
