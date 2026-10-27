@@ -8,8 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (XLSX) CDN -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Supabase JS Client -->
@@ -423,7 +421,7 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-base">Beheer &amp; Instellingen</h3>
-                        <p class="text-xs text-slate-400">Beheer pincode, categorieën, afdelingen, contractsoorten, jaartallen en budgetten</p>
+                        <p class="text-xs text-slate-400">Beheer pincode, categorieën, afdelingen, contractsoorten, jaartallen, budgetten en inflatie</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
@@ -478,8 +476,8 @@
 
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                        <span><i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten, Inflatie &amp; Zichtbaarheid per Jaar</span>
-                        <span class="text-[10px] text-slate-400 font-normal">Vink 'Zichtbaar' aan/uit om te tonen in de app</span>
+                        <span><i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten, Inflatie % &amp; Zichtbaarheid per Jaar</span>
+                        <span class="text-[10px] text-slate-400 font-normal">Vul hier per jaar direct het inflatiepercentage in</span>
                     </h4>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs">
@@ -641,9 +639,9 @@
                 appData.settings.inflationRates[currentYear] = 2.5;
             }
 
+            // Automatisch selecteren van huidig jaar of eerste zichtbare jaar met data indien mogelijk
             if (!appData.activeYear || appData.settings.yearVisibility[appData.activeYear] === false) {
-                const firstVisible = appData.settings.years.find(yr => appData.settings.yearVisibility[yr] !== false);
-                appData.activeYear = firstVisible || currentYear;
+                appData.activeYear = appData.settings.years.includes(currentYear) ? currentYear : (appData.settings.years[0] || currentYear);
             }
 
             sortCompaniesAlphabetically();
@@ -751,7 +749,6 @@
                 }
             }
 
-            // Als er geen handmatige invoer is, kijk naar vorig jaar en pas inflatie toe
             let isInflated = false;
             if (!hasManualEntry && company.active !== false) {
                 const prevYear = targetYear - 1;
