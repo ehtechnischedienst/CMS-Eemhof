@@ -256,6 +256,7 @@
                             <th class="p-3">Bedrijfsnaam</th>
                             <th class="p-3">Omschrijving Werkzaamheden</th>
                             <th class="p-3">Categorie</th>
+                            <th class="p-3">Soort Contract</th>
                             <th class="p-3">Type Jaar</th>
                             <th class="p-3 text-right">Kosten (<span class="lbl-year">2026</span>)</th>
                             <th class="p-3">PO Nummer(s)</th>
@@ -944,7 +945,7 @@
             if (filteredCompanies.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="p-8 text-center text-slate-400">
+                        <td colspan="9" class="p-8 text-center text-slate-400">
                             Geen bedrijven gevonden die aan de gekozen filters voldoen.
                         </td>
                     </tr>
@@ -994,6 +995,7 @@
                     </td>
                     <td class="p-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(comp.description || '')}">${escapeHtml(comp.description || '-')}</td>
                     <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
+                    <td class="p-3 text-slate-700 font-medium">${escapeHtml(comp.contractType || '-')}</td>
                     <td class="p-3 text-slate-600">${escapeHtml(yearType)}</td>
                     <td class="p-3 text-right font-bold text-slate-900">${formatCurrency(costs.totalCost)}</td>
                     <td class="p-3 text-slate-600 font-mono text-[11px]">${escapeHtml(poNumbers)}</td>
@@ -1024,7 +1026,7 @@
 
                     subTr.innerHTML = `
                         <td></td>
-                        <td colspan="7" class="p-3 pl-8">
+                        <td colspan="8" class="p-3 pl-8">
                             <div class="bg-white/80 p-3 rounded-xl border border-amber-200/80 shadow-inner">
                                 <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">Specificatie Extra Kosten (<span class="lbl-year">${curYear}</span>):</span>
                                 ${extraRowsHtml}
@@ -1743,7 +1745,6 @@
                 const yearType = yearInfo.yearType || 'Boekjaar';
                 let contractFactor = (yearType === 'Kalenderjaar') ? (9 / 12) : 1;
 
-                // 1. Voeg alle afzonderlijke contractregels toe
                 let itemsToExport = yearInfo.contractItems || [];
                 if (itemsToExport.length === 0 && (yearInfo.contractAmount > 0 || yearInfo.poNumber)) {
                     itemsToExport = [{ description: comp.contractName || 'Contract', amount: yearInfo.contractAmount, poNumber: yearInfo.poNumber || '' }];
@@ -1756,6 +1757,7 @@
                         rows.push({
                             'Bedrijfsnaam': comp.name,
                             'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                            'Soort Contract': comp.contractType || '-',
                             'Type Regel': 'Contractregel',
                             'Omschrijving / Contractnaam': ci.description || comp.contractName || '-',
                             'Categorie': comp.category || '',
@@ -1767,7 +1769,6 @@
                     });
                 }
 
-                // 2. Voeg alle afzonderlijke extra kosten toe
                 if (Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0) {
                     yearInfo.extraCosts.forEach(ex => {
                         const exAmt = parseFloat(ex.amount) || 0;
@@ -1780,6 +1781,7 @@
                         rows.push({
                             'Bedrijfsnaam': comp.name,
                             'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                            'Soort Contract': comp.contractType || '-',
                             'Type Regel': 'Extra Kosten',
                             'Omschrijving / Contractnaam': ex.description || 'Extra kosten',
                             'Categorie': exCat,
@@ -1791,11 +1793,11 @@
                     });
                 }
 
-                // Als er helemaal geen contract- of extra kostenregels zijn voor dit jaar, toch een lege basisregel tonen
                 if (itemsToExport.length === 0 && (!Array.isArray(yearInfo.extraCosts) || yearInfo.extraCosts.length === 0)) {
                     rows.push({
                         'Bedrijfsnaam': comp.name,
                         'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                        'Soort Contract': comp.contractType || '-',
                         'Type Regel': 'Geen kosten',
                         'Omschrijving / Contractnaam': '-',
                         'Categorie': comp.category || '',
@@ -1819,6 +1821,7 @@
                 {
                     'Bedrijfsnaam': 'Voorbeeld Bedrijf A',
                     'Contractnaam': 'Onderhoud Contract',
+                    'Soort Contract': 'Park',
                     'Categorie': 'Fixed',
                     'Afdeling': 'General',
                     'Telefoon': '0612345678',
@@ -1867,6 +1870,7 @@
                         const contractAmt = parseFloat(row['Contractbedrag'] || row['bedrag'] || row['Amount']) || 0;
                         const yearType = row['Type Jaar'] || 'Boekjaar';
                         const poNum = row['PO Nummer'] || row['PO'] || '';
+                        const contractType = row['Soort Contract'] || appData.settings.contractTypes[0];
 
                         const yearlyData = {};
                         yearlyData[curYear] = {
@@ -1886,7 +1890,7 @@
                             description: row['Omschrijving'] || '',
                             category: row['Categorie'] || appData.settings.categories[0],
                             department: row['Afdeling'] || appData.settings.departments[0],
-                            contractType: appData.settings.contractTypes[0],
+                            contractType: contractType,
                             durationMonths: 12,
                             compulsory: 'Nee',
                             yearlyData: yearlyData
