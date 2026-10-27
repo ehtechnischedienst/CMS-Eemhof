@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (XLSX) CDN -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Supabase JS Client -->
@@ -254,7 +256,6 @@
                             <th class="p-3">Bedrijfsnaam</th>
                             <th class="p-3">Omschrijving Werkzaamheden</th>
                             <th class="p-3">Categorie</th>
-                            <th class="p-3">Soort Contract</th>
                             <th class="p-3">Type Jaar</th>
                             <th class="p-3 text-right">Kosten (<span class="lbl-year">2026</span>)</th>
                             <th class="p-3">PO Nummer(s)</th>
@@ -421,7 +422,7 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-base">Beheer &amp; Instellingen</h3>
-                        <p class="text-xs text-slate-400">Beheer pincode, categorieën, afdelingen, contractsoorten, jaartallen, budgetten en inflatie</p>
+                        <p class="text-xs text-slate-400">Beheer pincode, categorieën, afdelingen, contractsoorten, jaartallen en budgetten</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1 rounded-lg text-lg">
@@ -476,8 +477,8 @@
 
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                        <span><i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten, Inflatie % &amp; Zichtbaarheid per Jaar</span>
-                        <span class="text-[10px] text-slate-400 font-normal">Vul hier per jaar direct het inflatiepercentage in</span>
+                        <span><i class="fa-solid fa-wallet text-brand-500 mr-1.5"></i> Budgetten &amp; Zichtbaarheid per Jaar</span>
+                        <span class="text-[10px] text-slate-400 font-normal">Vink 'Zichtbaar' aan/uit om te tonen in de app</span>
                     </h4>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs">
@@ -485,7 +486,6 @@
                                 <tr class="text-slate-500 border-b border-slate-200">
                                     <th class="p-2">Jaar</th>
                                     <th class="p-2">Budget (€)</th>
-                                    <th class="p-2">Inflatie (%)</th>
                                     <th class="p-2 text-center">Zichtbaar</th>
                                     <th class="p-2 text-right">Actie</th>
                                 </tr>
@@ -494,9 +494,8 @@
                         </table>
                     </div>
                     <div class="pt-2 border-t border-slate-200 flex gap-2 items-center">
-                        <input type="number" id="newYearInput" placeholder="Jaartal (bijv. 2028)" class="w-28 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
+                        <input type="number" id="newYearInput" placeholder="Jaartal (bijv. 2028)" class="w-32 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
                         <input type="number" id="newYearBudgetInput" placeholder="Budget (€)" class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
-                        <input type="number" step="0.1" id="newYearInflationInput" placeholder="Inflatie %" class="w-24 px-3 py-1.5 text-xs border border-slate-200 rounded-lg">
                         <button onclick="addNewYearSetting()" class="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">Jaar Toevoegen</button>
                     </div>
                 </div>
@@ -567,13 +566,6 @@
                     2026: 180000,
                     2027: 200000
                 },
-                inflationRates: {
-                    2023: 0,
-                    2024: 2.5,
-                    2025: 3.0,
-                    2026: 2.5,
-                    2027: 2.0
-                },
                 yearVisibility: {
                     2023: true,
                     2024: true,
@@ -589,52 +581,38 @@
         };
 
         let selectedCompanyIds = new Set();
+        let myCategoryChart = null;
 
         async function initSystem() {
             const syncEl = document.getElementById('syncStatus');
             try {
                 if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Laden...';
                 
-                // Probeer data op te halen van Supabase met een korte timeout
-                const fetchPromise = supabaseClient.from('app_data').select('*').eq('id', 1).maybeSingle();
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
-                
-                const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+                const { data, error } = await supabaseClient
+                    .from('app_data')
+                    .select('*')
+                    .eq('id', 1)
+                    .maybeSingle();
 
                 if (error) throw error;
 
                 if (data && data.payload) {
                     appData = { ...appData, ...data.payload };
+                    if (!appData.settings.yearVisibility) {
+                        appData.settings.yearVisibility = {};
+                        appData.settings.years.forEach(yr => appData.settings.yearVisibility[yr] = true);
+                    }
+                    if (!appData.settings.pinCode) {
+                        appData.settings.pinCode = '389601';
+                    }
                 } else {
                     await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
                 }
 
                 if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i> Verbonden';
             } catch (e) {
-                console.warn("Kon niet verbinden met Supabase, laad lokaal opgeslagen gegevens:", e);
-                if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> Offline Modus';
-                
-                // Fallback: controleer of er lokale data in de browser staat
-                const localSaved = localStorage.getItem('cms_app_data_fallback');
-                if (localSaved) {
-                    try {
-                        appData = JSON.parse(localSaved);
-                    } catch (err) {
-                        console.error("Fout bij parsen lokale data", err);
-                    }
-                }
-            }
-
-            if (!appData.settings.yearVisibility) {
-                appData.settings.yearVisibility = {};
-                appData.settings.years.forEach(yr => appData.settings.yearVisibility[yr] = true);
-            }
-            if (!appData.settings.inflationRates) {
-                appData.settings.inflationRates = {};
-                appData.settings.years.forEach(yr => appData.settings.inflationRates[yr] = 2.5);
-            }
-            if (!appData.settings.pinCode) {
-                appData.settings.pinCode = '389601';
+                console.error("Failed loading data from Supabase:", e);
+                if (syncEl) syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Verbindingsfout';
             }
 
             const currentYear = new Date().getFullYear();
@@ -645,13 +623,10 @@
             if (appData.settings.yearVisibility[currentYear] === undefined) {
                 appData.settings.yearVisibility[currentYear] = true;
             }
-            if (appData.settings.inflationRates[currentYear] === undefined) {
-                appData.settings.inflationRates[currentYear] = 2.5;
-            }
 
-            // Stel het actieve jaar in op het huidige jaar (of het eerste zichtbare jaar met data)
             if (!appData.activeYear || appData.settings.yearVisibility[appData.activeYear] === false) {
-                appData.activeYear = appData.settings.years.includes(currentYear) ? currentYear : (appData.settings.years[0] || currentYear);
+                const firstVisible = appData.settings.years.find(yr => appData.settings.yearVisibility[yr] !== false);
+                appData.activeYear = firstVisible || currentYear;
             }
 
             sortCompaniesAlphabetically();
@@ -686,10 +661,6 @@
 
         async function saveData() {
             sortCompaniesAlphabetically();
-            
-            // Sla altijd direct lokaal op als backup
-            localStorage.setItem('cms_app_data_fallback', JSON.stringify(appData));
-
             const syncEl = document.getElementById('syncStatus');
             if (syncEl) {
                 syncEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-amber-400 mr-1"></i> Opslaan...';
@@ -707,7 +678,7 @@
             } catch (e) {
                 console.error("Failed saving data to Supabase:", e);
                 if (syncEl) {
-                    syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i> Lokaal Opgeslagen';
+                    syncEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> Opslaan mislukt';
                 }
             }
         }
@@ -743,96 +714,65 @@
             refreshDashboard();
         }
 
-        function getCompanyContractDataForYear(company, targetYear) {
-            targetYear = parseInt(targetYear, 10);
-            const curData = company.yearlyData ? (company.yearlyData[targetYear] || company.yearlyData[String(targetYear)]) : null;
-            
-            let rawAmt = 0;
-            let hasManualEntry = false;
-
-            if (curData) {
-                if (Array.isArray(curData.contractItems) && curData.contractItems.length > 0) {
-                    const sum = curData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-                    if (sum > 0 || curData.contractItems.some(i => i.description || i.poNumber)) {
-                        rawAmt = sum;
-                        hasManualEntry = true;
-                    }
-                } else if (curData.contractAmount && parseFloat(curData.contractAmount) > 0) {
-                    rawAmt = parseFloat(curData.contractAmount);
-                    hasManualEntry = true;
-                }
-            }
-
-            let isInflated = false;
-            if (!hasManualEntry && company.active !== false) {
-                const prevYear = targetYear - 1;
-                const prevDataResolved = getCompanyContractDataForYear(company, prevYear);
-                if (prevDataResolved.amount > 0) {
-                    const inflationRate = (appData.settings.inflationRates && appData.settings.inflationRates[targetYear] !== undefined) 
-                        ? parseFloat(appData.settings.inflationRates[targetYear]) 
-                        : 2.5;
-                    rawAmt = prevDataResolved.amount * (1 + (inflationRate / 100));
-                    isInflated = true;
-                }
-            }
-
-            let yearType = (curData && curData.yearType) ? curData.yearType : 'Boekjaar';
-            let contractFactor = (yearType === 'Kalenderjaar') ? (9 / 12) : 1;
-
-            return {
-                amount: rawAmt,
-                factoredAmount: rawAmt * contractFactor,
-                isInflated: isInflated,
-                hasManualEntry: hasManualEntry
-            };
-        }
-
         function calculateCompanyYearlyCosts(company, year, categoryFilter = 'ALL') {
             let matchedContractCost = 0;
             let matchedExtraCost = 0;
-            let isAnyInflated = false;
 
             const targetYear = parseInt(year, 10);
             const prevYear = targetYear - 1;
 
             if (company.yearlyData) {
-                const curData = company.yearlyData[targetYear] || company.yearlyData[String(targetYear)] || {};
-                let contractRes = getCompanyContractDataForYear(company, targetYear);
-                if (contractRes.isInflated) {
-                    isAnyInflated = true;
-                }
+                const curData = company.yearlyData[targetYear] || company.yearlyData[String(targetYear)];
+                if (curData) {
+                    let rawAmtSum = 0;
+                    if (Array.isArray(curData.contractItems) && curData.contractItems.length > 0) {
+                        rawAmtSum = curData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+                    } else {
+                        rawAmtSum = parseFloat(curData.contractAmount) || 0;
+                    }
 
-                const mainCat = company.category || 'Fixed';
-                const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
-                if (mainMatches) {
-                    matchedContractCost += contractRes.factoredAmount;
-                }
+                    let contractFactor = 1;
+                    if (curData.yearType === 'Kalenderjaar') {
+                        contractFactor = 9 / 12;
+                    }
 
-                if (Array.isArray(curData.extraCosts)) {
-                    curData.extraCosts.forEach(ex => {
-                        const exAmt = parseFloat(ex.amount) || 0;
-                        const exCat = ex.category || 'Overig';
-                        const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
+                    const mainCat = company.category || 'Fixed';
+                    const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
+                    if (mainMatches) {
+                        matchedContractCost += rawAmtSum * contractFactor;
+                    }
 
-                        let contractFactor = (curData.yearType === 'Kalenderjaar') ? (9 / 12) : 1;
-                        if (exMatches) {
-                            if (exCat === 'Fixed extra') {
-                                matchedExtraCost += exAmt;
-                            } else {
-                                matchedExtraCost += exAmt * contractFactor;
+                    if (Array.isArray(curData.extraCosts)) {
+                        curData.extraCosts.forEach(ex => {
+                            const exAmt = parseFloat(ex.amount) || 0;
+                            const exCat = ex.category || 'Overig';
+                            const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
+
+                            if (exMatches) {
+                                if (exCat === 'Fixed extra') {
+                                    matchedExtraCost += exAmt;
+                                } else {
+                                    matchedExtraCost += exAmt * contractFactor;
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
 
                 const prevData = company.yearlyData[prevYear] || company.yearlyData[String(prevYear)];
                 if (prevData) {
-                    let prevContractRes = getCompanyContractDataForYear(company, prevYear);
+                    let prevAmtSum = 0;
+                    if (Array.isArray(prevData.contractItems) && prevData.contractItems.length > 0) {
+                        prevAmtSum = prevData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+                    } else {
+                        prevAmtSum = parseFloat(prevData.contractAmount) || 0;
+                    }
+
                     if (prevData.yearType === 'Kalenderjaar') {
                         const mainCat = company.category || 'Fixed';
                         const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
                         if (mainMatches) {
-                            matchedContractCost += prevContractRes.amount * (3 / 12);
+                            matchedContractCost += prevAmtSum * (3 / 12);
                         }
                     }
                 }
@@ -841,8 +781,7 @@
             return {
                 contractCost: matchedContractCost,
                 extraCost: matchedExtraCost,
-                totalCost: matchedContractCost + matchedExtraCost,
-                isInflated: isAnyInflated
+                totalCost: matchedContractCost + matchedExtraCost
             };
         }
 
@@ -1005,7 +944,7 @@
             if (filteredCompanies.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="p-8 text-center text-slate-400">
+                        <td colspan="8" class="p-8 text-center text-slate-400">
                             Geen bedrijven gevonden die aan de gekozen filters voldoen.
                         </td>
                     </tr>
@@ -1032,18 +971,11 @@
                     contractBadgeHtml = `<span class="ml-1.5 px-1.5 py-0.5 bg-brand-50 text-brand-700 border border-brand-200 rounded text-[10px] font-semibold" title="${contractCount} contractregels in ${curYear}">+${contractCount} contracten</span>`;
                 }
 
-                if (costs.isInflated) {
-                    const infRate = appData.settings.inflationRates[curYear] || 2.5;
-                    contractBadgeHtml += ` <span class="px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold" title="Automatisch berekend op basis van vorig jaar + ${infRate}% inflatie">Inflatie +${infRate}%</span>`;
-                }
-
                 const tr = document.createElement('tr');
                 
                 let rowBgClass = 'hover:bg-slate-50';
                 if (comp.active === false) {
                     rowBgClass = 'opacity-50 bg-slate-50';
-                } else if (costs.isInflated) {
-                    rowBgClass = 'bg-amber-100/90 hover:bg-amber-200/80';
                 } else if (isYearActiveForCompany) {
                     rowBgClass = 'bg-emerald-100/80 hover:bg-emerald-200/75';
                 }
@@ -1062,7 +994,6 @@
                     </td>
                     <td class="p-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(comp.description || '')}">${escapeHtml(comp.description || '-')}</td>
                     <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
-                    <td class="p-3 text-slate-700 font-medium">${escapeHtml(comp.contractType || '-')}</td>
                     <td class="p-3 text-slate-600">${escapeHtml(yearType)}</td>
                     <td class="p-3 text-right font-bold text-slate-900">${formatCurrency(costs.totalCost)}</td>
                     <td class="p-3 text-slate-600 font-mono text-[11px]">${escapeHtml(poNumbers)}</td>
@@ -1093,7 +1024,7 @@
 
                     subTr.innerHTML = `
                         <td></td>
-                        <td colspan="8" class="p-3 pl-8">
+                        <td colspan="7" class="p-3 pl-8">
                             <div class="bg-white/80 p-3 rounded-xl border border-amber-200/80 shadow-inner">
                                 <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">Specificatie Extra Kosten (<span class="lbl-year">${curYear}</span>):</span>
                                 ${extraRowsHtml}
@@ -1448,7 +1379,7 @@
                     itemsToRender = [{ description: fallbackName, amount: yrData.contractAmount, poNumber: yrData.poNumber || '' }];
                 }
                 if (itemsToRender.length === 0) {
-                    itemsToRender = [{ description: fallbackName, amount: '', poNumber: '' }];
+                    itemsToRender = [{ description: fallbackName, amount: 0, poNumber: '' }];
                 }
                 itemsToRender.forEach(ci => addContractAmountLine(yr, ci));
 
@@ -1475,7 +1406,7 @@
                     <input type="text" placeholder="Omschrijving (bijv. ${escapeHtml(defaultDesc)})..." value="${escapeHtml(data ? data.description || '' : defaultDesc)}" class="inp-editable ci-desc w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
                 </div>
                 <div class="col-span-3">
-                    <input type="number" step="0.01" placeholder="Bedrag (€)" value="${data && data.amount !== undefined && data.amount !== '' ? data.amount : ''}" class="inp-editable ci-amt w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
+                    <input type="number" step="0.01" placeholder="Bedrag (€)" value="${data ? data.amount || '' : ''}" class="inp-editable ci-amt w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
                 </div>
                 <div class="col-span-3">
                     <input type="text" placeholder="PO nummer..." value="${escapeHtml(data ? data.poNumber || '' : '')}" class="inp-editable ci-po w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
@@ -1574,11 +1505,10 @@
                 if (contractContainer) {
                     contractContainer.querySelectorAll('[id^="ci_"]').forEach(row => {
                         const desc = row.querySelector('.ci-desc')?.value || '';
-                        const amtStr = row.querySelector('.ci-amt')?.value;
-                        const amount = amtStr !== '' ? parseFloat(amtStr) : 0;
+                        const amount = parseFloat(row.querySelector('.ci-amt')?.value) || 0;
                         const po = row.querySelector('.ci-po')?.value || '';
-                        if (!isNaN(amount) || desc || po) {
-                            contractItems.push({ description: desc, amount: isNaN(amount) ? 0 : amount, poNumber: po });
+                        if (amount > 0 || desc || po) {
+                            contractItems.push({ description: desc, amount: amount, poNumber: po });
                         }
                     });
                 }
@@ -1722,21 +1652,14 @@
             if (!appData.settings.yearVisibility) {
                 appData.settings.yearVisibility = {};
             }
-            if (!appData.settings.inflationRates) {
-                appData.settings.inflationRates = {};
-            }
 
             appData.settings.years.forEach(yr => {
                 const isVisible = appData.settings.yearVisibility[yr] !== false;
-                const infRate = appData.settings.inflationRates[yr] !== undefined ? appData.settings.inflationRates[yr] : 2.5;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-2 font-bold text-slate-800">${yr}</td>
                     <td class="p-2">
                         <input type="number" id="budget-input-${yr}" value="${appData.settings.budgets[yr] || 0}" class="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
-                    </td>
-                    <td class="p-2">
-                        <input type="number" step="0.1" id="inflation-input-${yr}" value="${infRate}" class="w-20 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none">
                     </td>
                     <td class="p-2 text-center">
                         <input type="checkbox" id="visibility-input-${yr}" ${isVisible ? 'checked' : ''} class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer">
@@ -1751,13 +1674,9 @@
 
         function saveSingleBudget(yr) {
             const val = parseFloat(document.getElementById(`budget-input-${yr}`)?.value) || 0;
-            const infVal = parseFloat(document.getElementById(`inflation-input-${yr}`)?.value) || 0;
             const visible = document.getElementById(`visibility-input-${yr}`)?.checked ?? true;
 
             appData.settings.budgets[yr] = val;
-            if (!appData.settings.inflationRates) appData.settings.inflationRates = {};
-            appData.settings.inflationRates[yr] = infVal;
-
             if (!appData.settings.yearVisibility) appData.settings.yearVisibility = {};
             appData.settings.yearVisibility[yr] = visible;
 
@@ -1770,12 +1689,10 @@
         function addNewYearSetting() {
             const yrInput = document.getElementById('newYearInput');
             const budgetInput = document.getElementById('newYearBudgetInput');
-            const inflationInput = document.getElementById('newYearInflationInput');
             if (!yrInput || !budgetInput) return;
 
             const yr = parseInt(yrInput.value, 10);
             const budget = parseFloat(budgetInput.value) || 0;
-            const inflation = inflationInput && inflationInput.value !== '' ? parseFloat(inflationInput.value) : 2.5;
 
             if (!yr || yr < 2000 || yr > 2100) {
                 alert('Voer a.u.b. een geldig jaartal in (bijv. 2028).');
@@ -1788,13 +1705,11 @@
             }
 
             appData.settings.budgets[yr] = budget;
-            appData.settings.inflationRates[yr] = inflation;
             if (!appData.settings.yearVisibility) appData.settings.yearVisibility = {};
             appData.settings.yearVisibility[yr] = true;
 
             yrInput.value = '';
             budgetInput.value = '';
-            if (inflationInput) inflationInput.value = '';
 
             renderBudgetSettingsTable();
             saveData();
@@ -1828,20 +1743,19 @@
                 const yearType = yearInfo.yearType || 'Boekjaar';
                 let contractFactor = (yearType === 'Kalenderjaar') ? (9 / 12) : 1;
 
-                let contractRes = getCompanyContractDataForYear(comp, curYear);
+                // 1. Voeg alle afzonderlijke contractregels toe
                 let itemsToExport = yearInfo.contractItems || [];
                 if (itemsToExport.length === 0 && (yearInfo.contractAmount > 0 || yearInfo.poNumber)) {
                     itemsToExport = [{ description: comp.contractName || 'Contract', amount: yearInfo.contractAmount, poNumber: yearInfo.poNumber || '' }];
                 }
 
-                if (itemsToExport.length > 0 && contractRes.hasManualEntry) {
+                if (itemsToExport.length > 0) {
                     itemsToExport.forEach(ci => {
                         const rawAmt = parseFloat(ci.amount) || 0;
                         const finalAmt = rawAmt * contractFactor;
                         rows.push({
                             'Bedrijfsnaam': comp.name,
                             'Status': comp.active !== false ? 'Actief' : 'Inactief',
-                            'Soort Contract': comp.contractType || '-',
                             'Type Regel': 'Contractregel',
                             'Omschrijving / Contractnaam': ci.description || comp.contractName || '-',
                             'Categorie': comp.category || '',
@@ -1851,21 +1765,9 @@
                             'PO Nummer': ci.poNumber || '-'
                         });
                     });
-                } else if (contractRes.amount > 0) {
-                    rows.push({
-                        'Bedrijfsnaam': comp.name,
-                        'Status': comp.active !== false ? 'Actief' : 'Inactief',
-                        'Soort Contract': comp.contractType || '-',
-                        'Type Regel': contractRes.isInflated ? 'Contract (Inflatie)' : 'Contract',
-                        'Omschrijving / Contractnaam': comp.contractName || 'Contract',
-                        'Categorie': comp.category || '',
-                        'Afdeling': comp.department || '',
-                        'Type Jaar': yearType,
-                        'Bedrag (€)': contractRes.factoredAmount,
-                        'PO Nummer': '-'
-                    });
                 }
 
+                // 2. Voeg alle afzonderlijke extra kosten toe
                 if (Array.isArray(yearInfo.extraCosts) && yearInfo.extraCosts.length > 0) {
                     yearInfo.extraCosts.forEach(ex => {
                         const exAmt = parseFloat(ex.amount) || 0;
@@ -1878,7 +1780,6 @@
                         rows.push({
                             'Bedrijfsnaam': comp.name,
                             'Status': comp.active !== false ? 'Actief' : 'Inactief',
-                            'Soort Contract': comp.contractType || '-',
                             'Type Regel': 'Extra Kosten',
                             'Omschrijving / Contractnaam': ex.description || 'Extra kosten',
                             'Categorie': exCat,
@@ -1887,6 +1788,21 @@
                             'Bedrag (€)': exFinalAmt,
                             'PO Nummer': ex.poNumber || '-'
                         });
+                    });
+                }
+
+                // Als er helemaal geen contract- of extra kostenregels zijn voor dit jaar, toch een lege basisregel tonen
+                if (itemsToExport.length === 0 && (!Array.isArray(yearInfo.extraCosts) || yearInfo.extraCosts.length === 0)) {
+                    rows.push({
+                        'Bedrijfsnaam': comp.name,
+                        'Status': comp.active !== false ? 'Actief' : 'Inactief',
+                        'Type Regel': 'Geen kosten',
+                        'Omschrijving / Contractnaam': '-',
+                        'Categorie': comp.category || '',
+                        'Afdeling': comp.department || '',
+                        'Type Jaar': yearType,
+                        'Bedrag (€)': 0,
+                        'PO Nummer': '-'
                     });
                 }
             });
@@ -1903,7 +1819,6 @@
                 {
                     'Bedrijfsnaam': 'Voorbeeld Bedrijf A',
                     'Contractnaam': 'Onderhoud Contract',
-                    'Soort Contract': 'Park',
                     'Categorie': 'Fixed',
                     'Afdeling': 'General',
                     'Telefoon': '0612345678',
@@ -1952,7 +1867,6 @@
                         const contractAmt = parseFloat(row['Contractbedrag'] || row['bedrag'] || row['Amount']) || 0;
                         const yearType = row['Type Jaar'] || 'Boekjaar';
                         const poNum = row['PO Nummer'] || row['PO'] || '';
-                        const contractType = row['Soort Contract'] || appData.settings.contractTypes[0];
 
                         const yearlyData = {};
                         yearlyData[curYear] = {
@@ -1972,7 +1886,7 @@
                             description: row['Omschrijving'] || '',
                             category: row['Categorie'] || appData.settings.categories[0],
                             department: row['Afdeling'] || appData.settings.departments[0],
-                            contractType: contractType,
+                            contractType: appData.settings.contractTypes[0],
                             durationMonths: 12,
                             compulsory: 'Nee',
                             yearlyData: yearlyData
