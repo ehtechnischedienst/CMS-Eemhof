@@ -241,8 +241,9 @@
                     <i class="fa-solid fa-list-check text-brand-500"></i>
                     Bedrijven &amp; Contracten Overzicht (<span class="lbl-year">2026</span>)
                 </h2>
-                <div class="text-xs text-slate-500">
-                    Klik op een bedrijfsnaam om details of kosten per jaar te bewerken
+                <div class="text-xs text-slate-500 flex items-center gap-3">
+                    <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block"></span> Oranje = Geschat op basis van vorig jaar + inflatie</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-300 inline-block"></span> Groen = Geverifieerd</span>
                 </div>
             </div>
 
@@ -448,7 +449,7 @@
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
                         <i class="fa-solid fa-percent text-brand-500 mr-1.5"></i> Standaard Inflatiepercentage
                     </h4>
-                    <p class="text-xs text-slate-500">Stel hier het standaard inflatiepercentage in voor toekomstige berekeningen.</p>
+                    <p class="text-xs text-slate-500">Stel hier het standaard inflatiepercentage in voor automatische indexatie bij lege jaarkosten.</p>
                     <div class="flex gap-2 items-center">
                         <input type="number" step="0.1" id="settingInflationInput" placeholder="Bijv. 2.5" class="w-48 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none">
                         <span class="text-xs font-semibold text-slate-600">%</span>
@@ -572,7 +573,7 @@
             activeYear: new Date().getFullYear(),
             settings: {
                 pinCode: '389601',
-                inflationRate: 2.0, // Standaard inflatiepercentage
+                inflationRate: 2.5, // Standaard inflatiepercentage
                 years: [2023, 2024, 2025, 2026, 2027],
                 budgets: {
                     2023: 100000,
@@ -621,7 +622,7 @@
                         appData.settings.pinCode = '389601';
                     }
                     if (appData.settings.inflationRate === undefined) {
-                        appData.settings.inflationRate = 2.0;
+                        appData.settings.inflationRate = 2.5;
                     }
                 } else {
                     await supabaseClient.from('app_data').upsert([{ id: 1, payload: appData }]);
@@ -735,9 +736,99 @@
         function calculateCompanyYearlyCosts(company, year, categoryFilter = 'ALL') {
             let matchedContractCost = 0;
             let matchedExtraCost = 0;
+            let isEstimated = false;
 
             const targetYear = parseInt(year, 10);
             const prevYear = targetYear - 1;
+
+            let curData = company.yearlyData ? (company.yearlyData[targetYear] || company.yearlyData[String(targetYear)]) : null;
+            
+            // Check of er direct ingevulde bedragen/regels zijn in het gekozen jaar
+            let rawAmtSum = 0;
+            if (curData) {
+                if (Array.isArray(curData.contractItems) && curData.contractItems.length > 0) {
+                    rawAmtSum = curData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+                } else {
+                    rawAmtSum = parseFloat(curData.contractAmount) || 0;
+                }
+            }
+
+            // Als er NIETS is ingevuld in dit jaar, proberen we vorig jaar op te halen + inflatie
+            if (rawAmtSum === 0 && (!curData || !Array.isArray(curData.extraCosts) || curData.extraCosts.length === 0)) {
+                const prevCosts = getRawCompanyYearCosts(company, prevYear, categoryFilter);
+                if (prevCosts.totalCost > 0) {
+                    const inflationRate = parseFloat(appData.settings.inflationRate) || 0;
+                    const inflationFactor = 1 + (inflationRate / 100);
+                    
+                    matchedContractCost = prevCosts.contractCost * inflationFactor;
+                    matchedExtraCost = prevCosts.extraCost * inflationFactor;
+                    isEstimated = true;
+
+                    return {
+                        contractCost: matchedContractCost,
+                        extraCost: matchedExtraCost,
+                        totalCost: matchedContractCost + matchedExtraCost,
+                        isEstimated: true
+                    };
+                }
+            }
+
+            // Normale berekening voor ingevuld jaar
+            if (curData) {
+                let contractFactor = (curData.yearType === 'Kalenderjaar') ? (9 / 12) : 1;
+                const mainCat = company.category || 'Fixed';
+                const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
+                if (mainMatches) {
+                    matchedContractCost += rawAmtSum * contractFactor;
+                }
+
+                if (Array.isArray(curData.extraCosts)) {
+                    curData.extraCosts.forEach(ex => {
+                        const exAmt = parseFloat(ex.amount) || 0;
+                        const exCat = ex.category || 'Overig';
+                        const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
+
+                        if (exMatches) {
+                            if (exCat === 'Fixed extra') {
+                                matchedExtraCost += exAmt;
+                            } else {
+                                matchedExtraCost += exAmt * contractFactor;
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Splitboekjaar verwerking vanuit voorgaand jaar
+            const prevData = company.yearlyData ? (company.yearlyData[prevYear] || company.yearlyData[String(prevYear)]) : null;
+            if (prevData && prevData.yearType === 'Kalenderjaar') {
+                let prevAmtSum = 0;
+                if (Array.isArray(prevData.contractItems) && prevData.contractItems.length > 0) {
+                    prevAmtSum = prevData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+                } else {
+                    prevAmtSum = parseFloat(prevData.contractAmount) || 0;
+                }
+
+                const mainCat = company.category || 'Fixed';
+                const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
+                if (mainMatches) {
+                    matchedContractCost += prevAmtSum * (3 / 12);
+                }
+            }
+
+            return {
+                contractCost: matchedContractCost,
+                extraCost: matchedExtraCost,
+                totalCost: matchedContractCost + matchedExtraCost,
+                isEstimated: false
+            };
+        }
+
+        // Hulpfunctie voor puur de kosten van een specifiek jaar (zonder de inflatieloop)
+        function getRawCompanyYearCosts(company, year, categoryFilter = 'ALL') {
+            let matchedContractCost = 0;
+            let matchedExtraCost = 0;
+            const targetYear = parseInt(year, 10);
 
             if (company.yearlyData) {
                 const curData = company.yearlyData[targetYear] || company.yearlyData[String(targetYear)];
@@ -749,14 +840,9 @@
                         rawAmtSum = parseFloat(curData.contractAmount) || 0;
                     }
 
-                    let contractFactor = 1;
-                    if (curData.yearType === 'Kalenderjaar') {
-                        contractFactor = 9 / 12;
-                    }
-
+                    let contractFactor = (curData.yearType === 'Kalenderjaar') ? (9 / 12) : 1;
                     const mainCat = company.category || 'Fixed';
-                    const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
-                    if (mainMatches) {
+                    if (categoryFilter === 'ALL' || mainCat === categoryFilter) {
                         matchedContractCost += rawAmtSum * contractFactor;
                     }
 
@@ -764,9 +850,7 @@
                         curData.extraCosts.forEach(ex => {
                             const exAmt = parseFloat(ex.amount) || 0;
                             const exCat = ex.category || 'Overig';
-                            const exMatches = (categoryFilter === 'ALL' || exCat === categoryFilter);
-
-                            if (exMatches) {
+                            if (categoryFilter === 'ALL' || exCat === categoryFilter) {
                                 if (exCat === 'Fixed extra') {
                                     matchedExtraCost += exAmt;
                                 } else {
@@ -776,26 +860,7 @@
                         });
                     }
                 }
-
-                const prevData = company.yearlyData[prevYear] || company.yearlyData[String(prevYear)];
-                if (prevData) {
-                    let prevAmtSum = 0;
-                    if (Array.isArray(prevData.contractItems) && prevData.contractItems.length > 0) {
-                        prevAmtSum = prevData.contractItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-                    } else {
-                        prevAmtSum = parseFloat(prevData.contractAmount) || 0;
-                    }
-
-                    if (prevData.yearType === 'Kalenderjaar') {
-                        const mainCat = company.category || 'Fixed';
-                        const mainMatches = (categoryFilter === 'ALL' || mainCat === categoryFilter);
-                        if (mainMatches) {
-                            matchedContractCost += prevAmtSum * (3 / 12);
-                        }
-                    }
-                }
             }
-
             return {
                 contractCost: matchedContractCost,
                 extraCost: matchedExtraCost,
@@ -929,6 +994,7 @@
             const statusVal = document.getElementById('filterStatus')?.value || 'ACTIVE';
 
             const curYear = appData.activeYear;
+            const inflationRate = parseFloat(appData.settings.inflationRate) || 0;
 
             const filteredCompanies = appData.companies.filter(comp => {
                 const nameMatch = (comp.name || '').toLowerCase().includes(searchVal);
@@ -994,8 +1060,23 @@
                 let rowBgClass = 'hover:bg-slate-50';
                 if (comp.active === false) {
                     rowBgClass = 'opacity-50 bg-slate-50';
+                } else if (costs.isEstimated) {
+                    // Oranje markeringskleur voor geschatte waarden!
+                    rowBgClass = 'bg-amber-100/90 hover:bg-amber-200/90 border-l-4 border-amber-500';
                 } else if (isYearActiveForCompany) {
                     rowBgClass = 'bg-emerald-100/80 hover:bg-emerald-200/75';
+                }
+
+                let costDisplayHtml = formatCurrency(costs.totalCost);
+                if (costs.isEstimated) {
+                    costDisplayHtml = `
+                        <div class="flex flex-col items-end">
+                            <span class="font-bold text-amber-900">${formatCurrency(costs.totalCost)}</span>
+                            <span class="text-[9px] px-1.5 py-0.2 bg-amber-200/80 text-amber-900 rounded font-semibold border border-amber-300" title="Berekend op basis van vorig jaar + ${inflationRate}% inflatie">
+                                <i class="fa-solid fa-chart-line text-[8px] mr-1"></i>Geschat (+${inflationRate}%)
+                            </span>
+                        </div>
+                    `;
                 }
 
                 tr.className = `transition-colors ${rowBgClass}`;
@@ -1014,7 +1095,7 @@
                     <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 text-[11px] font-medium">${escapeHtml(comp.category || 'Fixed')}</span></td>
                     <td class="p-3 text-slate-700 font-medium">${escapeHtml(comp.contractType || '-')}</td>
                     <td class="p-3 text-slate-600">${escapeHtml(yearType)}</td>
-                    <td class="p-3 text-right font-bold text-slate-900">${formatCurrency(costs.totalCost)}</td>
+                    <td class="p-3 text-right font-bold text-slate-900">${costDisplayHtml}</td>
                     <td class="p-3 text-slate-600 font-mono text-[11px]">${escapeHtml(poNumbers)}</td>
                     <td class="p-3 text-center">
                         ${hasExtra ? `
@@ -1600,7 +1681,7 @@
             if (pinInput) pinInput.value = appData.settings.pinCode || '389601';
 
             const inflationInput = document.getElementById('settingInflationInput');
-            if (inflationInput) inflationInput.value = appData.settings.inflationRate ?? 2.0;
+            if (inflationInput) inflationInput.value = appData.settings.inflationRate ?? 2.5;
 
             const modal = document.getElementById('settingsModal');
             if (modal) {
@@ -1639,6 +1720,7 @@
             }
             appData.settings.inflationRate = val;
             saveData();
+            refreshDashboard();
             alert('Inflatiepercentage succesvol opgeslagen!');
         }
 
